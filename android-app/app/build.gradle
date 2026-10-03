@@ -1,0 +1,44 @@
+plugins {
+    id 'com.android.application'
+}
+
+def media3Version = '1.5.1'
+
+android {
+    namespace 'com.lctechgroup.imgbrowser'
+    compileSdk 35
+    buildToolsVersion '35.0.1'
+
+    defaultConfig {
+        applicationId 'com.lctechgroup.imgbrowser'
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // 让 javac 过时 API 警告带具体文件和行号，便于核对是否为自有代码
+    tasks.withType(JavaCompile).configureEach {
+        options.compilerArgs += ['-Xlint:deprecation']
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+    // 显式对齐新版注解库，消除 media3 引用 RestrictTo.Scope.LIBRARY_GROUP 的枚举常量警告
+    implementation 'androidx.annotation:annotation:1.9.1'
+    implementation "androidx.media3:media3-exoplayer:${media3Version}"
+    implementation "androidx.media3:media3-ui:${media3Version}"
+    implementation "androidx.media3:media3-datasource:${media3Version}"
+    implementation "androidx.media3:media3-extractor:${media3Version}"
+}

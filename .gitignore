@@ -1,0 +1,39 @@
+# ===== 构建产物与本地缓存 =====
+android-app/build/
+android-app/app/build/
+android-app/.gradle/
+android-app/build/.gradle/
+build/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Gradle 本地配置（含本机 SDK 路径，不入库）
+android-app/local.properties
+
+# 构建脚本产生的日志
+android-app/last-build.log
+build-err*.log
+_gradle.log
+
+# ===== 本地 Gradle 发行版（体积巨大，应由 wrapper 按需下载） =====
+.tools/
+.gradle/
+
+# ===== 系统/编辑器杂项 =====
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+.idea/
+*.iml
+.vscode/
+_edgeprofile/
+_edgeprofile2/
+_edgecdp/
+_nvtest.html
+_gen.js
+_cdp.mjs
+_dump.html
+_edgeerr.txt
