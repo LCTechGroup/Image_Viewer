@@ -12,6 +12,16 @@ build/
 # Gradle 本地配置（含本机 SDK 路径，不入库）
 android-app/local.properties
 
+# release 签名密钥、凭据与 release 构建脚本，仅保留在本机，严禁入库
+# （丢失/泄露需重新签名，已装用户无法平滑升级；根目录另有一份备份）
+/keystore.properties
+/release.keystore
+android-app/keystore.properties
+android-app/*.jks
+android-app/*.keystore
+android-app/build-release.ps1
+android-app/last-build-release.log
+
 # 构建脚本产生的日志
 android-app/last-build.log
 build-err*.log

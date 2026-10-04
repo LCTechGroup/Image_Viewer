@@ -4,10 +4,29 @@ plugins {
 
 def media3Version = '1.5.1'
 
+// release 签名凭据从 keystore.properties 读取（该文件不入库，见 .gitignore）；
+// 文件缺失时退化为不签名，保证他人 clone 后仍能构建 debug
+def ksPropsFile = rootProject.file('keystore.properties')
+def ksProps = new Properties()
+if (ksPropsFile.exists()) {
+    ksProps.load(new FileInputStream(ksPropsFile))
+}
+
 android {
     namespace 'com.lctechgroup.imgbrowser'
     compileSdk 35
     buildToolsVersion '35.0.1'
+
+    signingConfigs {
+        if (ksPropsFile.exists()) {
+            release {
+                storeFile rootProject.file(ksProps['storeFile'])
+                storePassword ksProps['storePassword']
+                keyAlias ksProps['keyAlias']
+                keyPassword ksProps['keyPassword']
+            }
+        }
+    }
 
     defaultConfig {
         applicationId 'com.lctechgroup.imgbrowser'
@@ -30,6 +49,9 @@ android {
     buildTypes {
         release {
             minifyEnabled false
+            if (ksPropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
@@ -37,6 +59,7 @@ android {
 dependencies {
     // 显式对齐新版注解库，消除 media3 引用 RestrictTo.Scope.LIBRARY_GROUP 的枚举常量警告
     implementation 'androidx.annotation:annotation:1.9.1'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation "androidx.media3:media3-exoplayer:${media3Version}"
     implementation "androidx.media3:media3-ui:${media3Version}"
     implementation "androidx.media3:media3-datasource:${media3Version}"

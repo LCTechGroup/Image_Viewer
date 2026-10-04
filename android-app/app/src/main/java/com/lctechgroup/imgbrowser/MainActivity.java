@@ -16,6 +16,7 @@ import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
 import android.view.KeyEvent;
 import android.view.Window;
+import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -61,6 +62,8 @@ public class MainActivity extends Activity {
     private final ExecutorService thumbPool = Executors.newFixedThreadPool(2);
     private final java.util.concurrent.ScheduledExecutorService thumbTimer =
             Executors.newSingleThreadScheduledExecutor();
+    // 目录树并行扫描池：深树（每话一个子文件夹）时多个 SAF 查询并发，4 路为 binder 甜点
+    private final ExecutorService scanPool = Executors.newFixedThreadPool(4);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -176,8 +179,10 @@ public class MainActivity extends Activity {
             headers.put("Accept-Ranges", "bytes");
             // 允许 file:// 页面把视频帧画入 canvas 生成封面
             headers.put("Access-Control-Allow-Origin", "*");
-            // 禁止 WebView 缓存分片，拖进度时必须重新请求正确的 Range
-            headers.put("Cache-Control", "no-store");
+            // 视频分片禁止缓存（拖进度必须重新请求 Range）；图片允许 WebView 缓存，
+            // 网格来回滚动时直接命中缓存，不再重开 SAF 描述符重复解码原图
+            headers.put("Cache-Control",
+                    mime != null && mime.startsWith("video/") ? "no-store" : "max-age=604800");
             FileInputStream fis = new FileInputStream(afd.getFileDescriptor());
             String range = reqHeaders != null ? reqHeaders.get("Range") : null;
             if (range == null) {
@@ -351,85 +356,270 @@ public class MainActivity extends Activity {
         }
     }
 
+    // 新选目录 / 手动刷新：显 loading 全量扫描，成功后覆盖树缓存
     private void scanTree(final Uri tree) {
         io.execute(new Runnable() {
             @Override
             public void run() {
-                try {
-                    String rootId = DocumentsContract.getTreeDocumentId(tree);
-                    String rootName = queryName(tree, rootId);
-                    if (rootName == null || rootName.length() == 0) {
-                        rootName = "已选文件夹";
-                    }
-                    prefs.edit().putString("treeName", rootName).apply();
-                    addRecord(tree.toString(), rootName);
+                runFullScan(tree, false);
+            }
+        });
+    }
 
-                    JSONObject root = new JSONObject();
-                    root.put("name", rootName);
-                    root.put("path", "");
-                    root.put("uri", tree.toString());
-                    root.put("dirs", new JSONArray());
-                    root.put("files", new JSONArray());
-
-                    final int[] count = {0};
-                    walk(tree, rootId, root, "", count);
-
-                    String json = root.toString()
-                            .replace("\u2028", "\\u2028")
-                            .replace("\u2029", "\\u2029");
-                    js("window.__onTree&&window.__onTree(" + json + ")");
-                } catch (Exception e) {
-                    js("window.__onTreeError&&window.__onTreeError(" + JSONObject.quote(e.toString()) + ")");
+    // 历史重开：缓存命中则先秒进，再后台静默全量重扫；无缓存走正常 loading 扫描
+    private void scanTreeCachedFirst(final Uri tree) {
+        io.execute(new Runnable() {
+            @Override
+            public void run() {
+                String cached = readTreeCache(tree);
+                if (cached != null) {
+                    js("window.__onTreeCached&&window.__onTreeCached(" + cached + ")");
+                    runFullScan(tree, true);
+                } else {
+                    runFullScan(tree, false);
                 }
             }
         });
     }
 
-    // 递归遍历目录，图片带文档 id，非图片 id 留空
-    private void walk(Uri tree, String docId, JSONObject node, String path, int[] count) throws Exception {
-        Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId);
-        Cursor c = null;
+    // 全量扫描：4 路并行查询子目录，Phaser 协调；background 为静默模式（不报错、走更新回调）
+    private void runFullScan(Uri tree, boolean background) {
         try {
-            c = getContentResolver().query(children, new String[]{
-                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                    DocumentsContract.Document.COLUMN_MIME_TYPE
-            }, null, null, null);
-            if (c == null) {
+            String rootId = DocumentsContract.getTreeDocumentId(tree);
+            String rootName = queryName(tree, rootId);
+            // 根文档查不到：文件夹已被删除或存储未挂载（授权记录可能仍在，不能再兜底成空树）
+            if (rootName == null || rootName.length() == 0) {
+                String uriJson = JSONObject.quote(tree.toString());
+                if (background) {
+                    js("window.__onTreeGone&&window.__onTreeGone(" + uriJson + ")");
+                } else {
+                    js("window.__onTreeError&&window.__onTreeError("
+                            + JSONObject.quote("文件夹不存在或无法访问") + "," + uriJson + ")");
+                }
                 return;
             }
-            while (c.moveToNext()) {
-                String id = c.getString(0);
-                String name = c.getString(1);
-                String mime = c.getString(2);
-                if (id == null || name == null) {
-                    continue;
+            prefs.edit().putString("treeName", rootName).apply();
+            addRecord(tree.toString(), rootName);
+
+            final JSONObject root = new JSONObject();
+            root.put("name", rootName);
+            root.put("path", "");
+            root.put("uri", tree.toString());
+            root.put("dirs", new JSONArray());
+            root.put("files", new JSONArray());
+
+            final java.util.concurrent.atomic.AtomicInteger count =
+                    new java.util.concurrent.atomic.AtomicInteger(0);
+            // 进度回调 500ms 节流，避免上万项时上百次 JS 桥往返
+            final java.util.concurrent.atomic.AtomicLong lastUi =
+                    new java.util.concurrent.atomic.AtomicLong(0L);
+            final java.util.concurrent.atomic.AtomicReference<Exception> firstErr =
+                    new java.util.concurrent.atomic.AtomicReference<Exception>(null);
+            final java.util.concurrent.Phaser phaser = new java.util.concurrent.Phaser(1);
+            phaser.register();
+            scanPool.execute(new DirTask(tree, rootId, root, "", phaser, count, lastUi, firstErr));
+            phaser.arriveAndAwaitAdvance();
+
+            Exception err = firstErr.get();
+            if (err != null) {
+                if (!background) {
+                    js("window.__onTreeError&&window.__onTreeError(" + JSONObject.quote(err.toString()) + ")");
                 }
-                String childPath = path + "/" + name;
-                if (DIR_MIME.equals(mime)) {
-                    JSONObject d = new JSONObject();
-                    d.put("name", name);
-                    d.put("path", childPath);
-                    d.put("dirs", new JSONArray());
-                    d.put("files", new JSONArray());
-                    walk(tree, id, d, childPath, count);
-                    node.getJSONArray("dirs").put(d);
-                } else {
-                    JSONObject f = new JSONObject();
-                    f.put("name", name);
-                    f.put("path", childPath);
-                    f.put("id", (isImage(name) || isVideo(name) || isMht(name) || isTxt(name)) ? id : "");
-                    node.getJSONArray("files").put(f);
+                return;
+            }
+
+            String json = root.toString()
+                    .replace("\u2028", "\\u2028")
+                    .replace("\u2029", "\\u2029");
+            writeTreeCache(tree, json);
+            String cb = background
+                    ? "window.__onTreeUpdate&&window.__onTreeUpdate("
+                    : "window.__onTree&&window.__onTree(";
+            js(cb + json + ")");
+        } catch (Exception e) {
+            // 前台加载失败显式报错并带 uri 供标记失效；后台瞬时异常静默，不打扰也不误标
+            if (!background) {
+                js("window.__onTreeError&&window.__onTreeError("
+                        + JSONObject.quote(e.toString()) + ","
+                        + JSONObject.quote(tree.toString()) + ")");
+            }
+        }
+    }
+
+    // 单个目录的扫描任务：结束必须 arriveAndDeregister
+    private final class DirTask implements Runnable {
+        private final Uri tree;
+        private final String docId;
+        private final JSONObject node;
+        private final String path;
+        private final java.util.concurrent.Phaser phaser;
+        private final java.util.concurrent.atomic.AtomicInteger count;
+        private final java.util.concurrent.atomic.AtomicLong lastUi;
+        private final java.util.concurrent.atomic.AtomicReference<Exception> firstErr;
+
+        DirTask(Uri tree, String docId, JSONObject node, String path,
+                java.util.concurrent.Phaser phaser,
+                java.util.concurrent.atomic.AtomicInteger count,
+                java.util.concurrent.atomic.AtomicLong lastUi,
+                java.util.concurrent.atomic.AtomicReference<Exception> firstErr) {
+            this.tree = tree;
+            this.docId = docId;
+            this.node = node;
+            this.path = path;
+            this.phaser = phaser;
+            this.count = count;
+            this.lastUi = lastUi;
+            this.firstErr = firstErr;
+        }
+
+        @Override
+        public void run() {
+            try {
+                walkOnce();
+            } finally {
+                phaser.arriveAndDeregister();
+            }
+        }
+
+        // 只查一层目录：子目录先按 query 顺序登记进父节点，游标关闭后再提交并行任务
+        private void walkOnce() {
+            Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId);
+            Cursor c = null;
+            try {
+                c = getContentResolver().query(children, new String[]{
+                        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                        DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                        DocumentsContract.Document.COLUMN_MIME_TYPE,
+                        DocumentsContract.Document.COLUMN_LAST_MODIFIED
+                }, null, null, null);
+                if (c == null) {
+                    return;
                 }
-                count[0]++;
-                if ((count[0] & 63) == 0) {
-                    final int n = count[0];
-                    js("window.__onWalkProgress&&window.__onWalkProgress(" + n + ")");
+                java.util.ArrayList<DirTask> pending = null;
+                while (c.moveToNext()) {
+                    String id = c.getString(0);
+                    String name = c.getString(1);
+                    String mime = c.getString(2);
+                    long modified = c.isNull(3) ? 0L : c.getLong(3);
+                    if (id == null || name == null) {
+                        continue;
+                    }
+                    String childPath = path + "/" + name;
+                    if (DIR_MIME.equals(mime)) {
+                        JSONObject d = new JSONObject();
+                        d.put("name", name);
+                        d.put("path", childPath);
+                        d.put("dirs", new JSONArray());
+                        d.put("files", new JSONArray());
+                        // 父节点数组只由本任务写入，保持 query 顺序；子任务稍后只填充 d 内部
+                        node.getJSONArray("dirs").put(d);
+                        if (pending == null) {
+                            pending = new java.util.ArrayList<DirTask>();
+                        }
+                        pending.add(new DirTask(tree, id, d, childPath, phaser, count, lastUi, firstErr));
+                    } else {
+                        JSONObject f = new JSONObject();
+                        f.put("name", name);
+                        f.put("path", childPath);
+                        f.put("id", (isImage(name) || isVideo(name) || isMht(name) || isTxt(name)) ? id : "");
+                        if (modified != 0L) {
+                            f.put("m", modified);
+                        }
+                        node.getJSONArray("files").put(f);
+                    }
+                    int n = count.incrementAndGet();
+                    if ((n & 255) == 0) {
+                        long now = android.os.SystemClock.elapsedRealtime();
+                        long prev = lastUi.get();
+                        if (now - prev >= 500 && lastUi.compareAndSet(prev, now)) {
+                            final int fn = n;
+                            js("window.__onWalkProgress&&window.__onWalkProgress(" + fn + ")");
+                        }
+                    }
+                }
+                c.close();
+                c = null;
+                if (pending != null) {
+                    for (DirTask t : pending) {
+                        // register 必须先于 execute，杜绝任务先 arrive 导致 Phaser 提前放行
+                        phaser.register();
+                        scanPool.execute(t);
+                    }
+                }
+            } catch (Exception e) {
+                firstErr.compareAndSet(null, e);
+            } finally {
+                if (c != null) {
+                    c.close();
                 }
             }
+        }
+    }
+
+    // ============ 目录树索引缓存（filesDir/treecache，与历史记录一一对应） ============
+
+    private java.io.File treeCacheFile(Uri tree) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-1");
+            byte[] d = md.digest(tree.toString().getBytes("UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : d) {
+                sb.append(String.format("%02x", b & 0xff));
+            }
+            java.io.File dir = new java.io.File(getFilesDir(), "treecache");
+            if (!dir.isDirectory()) {
+                dir.mkdirs();
+            }
+            return new java.io.File(dir, sb.toString() + ".json");
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String readTreeCache(Uri tree) {
+        java.io.FileInputStream fis = null;
+        try {
+            java.io.File f = treeCacheFile(tree);
+            if (f == null || !f.isFile() || f.length() == 0) {
+                return null;
+            }
+            int max = 64 * 1024 * 1024;
+            int len = (int) Math.min(f.length(), max);
+            byte[] b = new byte[len];
+            fis = new java.io.FileInputStream(f);
+            int off = 0, r;
+            while (off < len && (r = fis.read(b, off, len - off)) > 0) {
+                off += r;
+            }
+            return off > 0 ? new String(b, 0, off, "UTF-8") : null;
+        } catch (Exception e) {
+            return null;
         } finally {
-            if (c != null) {
-                c.close();
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (Exception ignored) {
+                }
+            }
+        }
+    }
+
+    private void writeTreeCache(Uri tree, String json) {
+        java.io.FileOutputStream fos = null;
+        try {
+            java.io.File f = treeCacheFile(tree);
+            if (f == null) {
+                return;
+            }
+            fos = new java.io.FileOutputStream(f);
+            fos.write(json.getBytes("UTF-8"));
+        } catch (Exception ignored) {
+        } finally {
+            if (fos != null) {
+                try {
+                    fos.close();
+                } catch (Exception ignored) {
+                }
             }
         }
     }
@@ -518,6 +708,11 @@ public class MainActivity extends Activity {
             }
         }
         prefs.edit().putString(K_RECORDS, out.toString()).apply();
+        // 与历史记录一一对应的目录树索引一并删除
+        java.io.File cf = treeCacheFile(Uri.parse(uri));
+        if (cf != null && cf.isFile()) {
+            cf.delete();
+        }
         try {
             getContentResolver().releasePersistableUriPermission(
                     Uri.parse(uri), Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -575,6 +770,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         io.shutdownNow();
+        scanPool.shutdownNow();
         thumbPool.shutdownNow();
         thumbTimer.shutdownNow();
         web.destroy();
@@ -618,6 +814,20 @@ public class MainActivity extends Activity {
             return false;
         }
 
+        // 指定 uri 的持久读授权是否仍在，供主页标记失效历史
+        @JavascriptInterface
+        public boolean uriAlive(String uri) {
+            if (uri == null || uri.length() == 0) {
+                return false;
+            }
+            for (UriPermission p : getContentResolver().getPersistedUriPermissions()) {
+                if (uri.equals(p.getUri().toString()) && p.isReadPermission()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         @JavascriptInterface
         public String rootName() {
             JSONArray a = recordsJson();
@@ -635,7 +845,7 @@ public class MainActivity extends Activity {
                 return;
             }
             treeUri = Uri.parse(s);
-            scanTree(treeUri);
+            scanTreeCachedFirst(treeUri);
         }
 
         // 手动刷新：重新扫描当前根目录
@@ -661,7 +871,7 @@ public class MainActivity extends Activity {
                 return;
             }
             treeUri = Uri.parse(uri);
-            scanTree(treeUri);
+            scanTreeCachedFirst(treeUri);
         }
 
         @JavascriptInterface
@@ -683,6 +893,46 @@ public class MainActivity extends Activity {
                     web.clearCache(true);
                 }
             });
+            // MHT 离线网页浏览时落在 cache/mht 的临时归档一并清掉
+            io.execute(new Runnable() {
+                @Override
+                public void run() {
+                    java.io.File mhtDir = new java.io.File(getCacheDir(), "mht");
+                    if (mhtDir.isDirectory()) {
+                        java.io.File[] fs = mhtDir.listFiles();
+                        if (fs != null) {
+                            for (java.io.File f : fs) {
+                                f.delete();
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 清目录树索引缓存（filesDir/treecache），与历史记录一一对应；索引在扫描优化启用后写入
+        @JavascriptInterface
+        public void clearTreeCache() {
+            io.execute(new Runnable() {
+                @Override
+                public void run() {
+                    java.io.File dir = new java.io.File(getFilesDir(), "treecache");
+                    if (dir.isDirectory()) {
+                        java.io.File[] fs = dir.listFiles();
+                        if (fs != null) {
+                            for (java.io.File f : fs) {
+                                f.delete();
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 清阅读器个性设置（视频长按倍速、循环单次）；其余设置在 JS localStorage
+        @JavascriptInterface
+        public void clearReaderPrefs() {
+            prefs.edit().remove("vpLoop").remove("vpHoldSpeed").apply();
         }
 
         // 异步抓视频首帧，立即返回；完成或超时后通过 window.__onThumb 回调，绝不阻塞 JS
@@ -811,6 +1061,31 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void setViewer(final boolean on) {
             viewerOn = on;
+            // 离开阅读器时兜底清掉屏幕常亮，防止标志残留
+            if (!on) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    }
+                });
+            }
+        }
+
+        // 图片阅读器屏幕常亮开关
+        @JavascriptInterface
+        public void setKeepScreen(final boolean on) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Window w = getWindow();
+                    if (on) {
+                        w.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    } else {
+                        w.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    }
+                }
+            });
         }
 
         // 阅读器内横屏锁定：1 锁横屏，0 恢复跟随系统

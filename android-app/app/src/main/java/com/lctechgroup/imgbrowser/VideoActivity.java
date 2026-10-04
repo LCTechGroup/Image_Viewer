@@ -4,30 +4,39 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.DocumentsContract;
+import android.util.LruCache;
+import android.util.Size;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.ui.PlayerView;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import static androidx.media3.common.Player.REPEAT_MODE_OFF;
 import static androidx.media3.common.Player.REPEAT_MODE_ONE;
 
@@ -155,6 +164,12 @@ public class VideoActivity extends Activity {
                         ? android.R.drawable.ic_media_pause
                         : android.R.drawable.ic_media_play);
                 btnPlay.setColorFilter(0xFFEEEEEE);
+                // 播放中默认屏幕常亮，暂停或播完恢复系统自动息屏
+                if (isPlaying) {
+                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                } else {
+                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                }
             }
         });
 
@@ -272,7 +287,7 @@ public class VideoActivity extends Activity {
         btnOrient.setColorFilter(landscape ? 0xFF232323 : 0xFFEEEEEE);
     }
 
-    // 纵向播单（带缩略图）
+    // 纵向播单：RecyclerView 复用行视图，缩略图按目标尺寸降采样、Lru 缓存、仅可见行加载
     private void showPlaylist() {
         if (listIds == null || listIds.length == 0) {
             return;
@@ -316,69 +331,21 @@ public class VideoActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         panel.addView(head);
 
-        MaxHeightScrollView sv = new MaxHeightScrollView(this,
-                (int) (getResources().getDisplayMetrics().heightPixels * 0.62));
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(0, (int) (6 * density), 0, 0);
-        sv.addView(box);
-        final View[] curRow = {null};
-        panel.addView(sv, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        // 列表高度固定为屏幕 62%，由 RecyclerView 回收视图保证滚动流畅
+        RecyclerView rv = new RecyclerView(this);
+        rv.setLayoutManager(new LinearLayoutManager(this));
+        rv.setHasFixedSize(false);
+        rv.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+        rv.setPadding(0, (int) (6 * density), 0, 0);
+        rv.setClipToPadding(false);
+        rv.setItemAnimator(null);
+        int listH = (int) (getResources().getDisplayMetrics().heightPixels * 0.62f);
+        panel.addView(rv, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, listH));
 
-        for (int i = 0; i < listIds.length; i++) {
-            final int idx = i;
-            String nm = listNames != null && i < listNames.length ? listNames[i] : ("视频 " + (i + 1));
-
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-            int rv = (int) (10 * density);
-            row.setPadding(rv, (int) (8 * density), rv, (int) (8 * density));
-            LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            rowLp.bottomMargin = (int) (5 * density);
-            row.setLayoutParams(rowLp);
-            GradientDrawable rowBg = new GradientDrawable();
-            rowBg.setCornerRadius(10 * density);
-            rowBg.setColor(i == currentIndex ? 0x40FFFFFF : 0x1AFFFFFF);
-            row.setBackground(rowBg);
-
-            int tw = (int) (84 * density);
-            int th = (int) (50 * density);
-            final ImageView thumb = new ImageView(this);
-            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(tw, th);
-            GradientDrawable thumbBg = new GradientDrawable();
-            thumbBg.setCornerRadius(6 * density);
-            thumbBg.setColor(0xFF111111);
-            thumb.setBackground(thumbBg);
-            thumb.setClipToOutline(true);
-            thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            thumb.setLayoutParams(tlp);
-            row.addView(thumb);
-
-            TextView label = new TextView(this);
-            LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(
-                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-            llp.setMarginStart((int) (10 * density));
-            label.setLayoutParams(llp);
-            label.setText((i == currentIndex ? "▶ " : "") + nm);
-            label.setTextSize(13);
-            label.setTextColor(i == currentIndex ? 0xFFFFFFFF : 0xFFB8BCC4);
-            if (i == currentIndex) label.setTypeface(null, Typeface.BOLD);
-            label.setMaxLines(2);
-            row.addView(label);
-
-            row.setOnClickListener(new View.OnClickListener() {
-                public void onClick(View v) {
-                    playIndex(idx);
-                    dlg.dismiss();
-                }
-            });
-            box.addView(row);
-            if (i == currentIndex) curRow[0] = row;
-            loadListThumb(thumb, listIds[i]);
-        }
+        final PlaylistAdapter adapter = new PlaylistAdapter(density);
+        dlgRef = dlg;
+        rv.setAdapter(adapter);
 
         dlg.setContentView(panel);
         Window w = dlg.getWindow();
@@ -389,59 +356,205 @@ public class VideoActivity extends Activity {
                     ViewGroup.LayoutParams.WRAP_CONTENT);
         }
         dlg.show();
-        // 打开播单即定位到当前播放项，尽量让它出现在列表中部
-        if (curRow[0] != null) {
-            final ScrollView scrollView = sv;
-            curRow[0].post(new Runnable() {
+        // 打开即把当前播放项放到列表中部：行高约 71dp（50 缩略图+16 上下 padding+5 间距）
+        int rowEst = (int) (71 * density);
+        ((LinearLayoutManager) rv.getLayoutManager()).scrollToPositionWithOffset(
+                currentIndex, Math.max(0, listH / 2 - rowEst / 2));
+    }
+
+    // 播单行 ViewHolder
+
+    private class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.VH> {
+        private final float density;
+        private final GradientDrawable bgCur, bgNormal, thumbBg;
+        // 已入队的缩略图去重，快速滑动时同一视频只抓一次帧
+        private final java.util.Set<String> queued =
+                java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<String, Boolean>());
+
+        PlaylistAdapter(float density) {
+            this.density = density;
+            bgCur = new GradientDrawable();
+            bgCur.setCornerRadius(10 * density);
+            bgCur.setColor(0x40FFFFFF);
+            bgNormal = new GradientDrawable();
+            bgNormal.setCornerRadius(10 * density);
+            bgNormal.setColor(0x1AFFFFFF);
+            thumbBg = new GradientDrawable();
+            thumbBg.setCornerRadius(6 * density);
+            thumbBg.setColor(0xFF111111);
+            // 播单数据不变，位置即可作为稳定 id
+            setHasStableIds(true);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @NonNull
+        @Override
+        public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            LinearLayout row = new LinearLayout(VideoActivity.this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            int rv = (int) (10 * density);
+            row.setPadding(rv, (int) (8 * density), rv, (int) (8 * density));
+            RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.bottomMargin = (int) (5 * density);
+            row.setLayoutParams(lp);
+
+            ImageView thumb = new ImageView(VideoActivity.this);
+            int tw = (int) (84 * density), th = (int) (50 * density);
+            thumb.setLayoutParams(new LinearLayout.LayoutParams(tw, th));
+            thumb.setBackground(thumbBg);
+            thumb.setClipToOutline(true);
+            thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            row.addView(thumb);
+
+            TextView label = new TextView(VideoActivity.this);
+            LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            llp.setMarginStart((int) (10 * density));
+            label.setLayoutParams(llp);
+            label.setTextSize(13);
+            label.setMaxLines(2);
+            row.addView(label);
+            return new VH(row, thumb, label);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull VH h, int position) {
+            String nm = listNames != null && position < listNames.length
+                    ? listNames[position] : ("视频 " + (position + 1));
+            boolean cur = position == currentIndex;
+            h.itemView.setBackground(cur ? bgCur : bgNormal);
+            h.label.setText((cur ? "▶ " : "") + nm);
+            h.label.setTextColor(cur ? 0xFFFFFFFF : 0xFFB8BCC4);
+            h.label.setTypeface(null, cur ? Typeface.BOLD : Typeface.NORMAL);
+            final int idx = position;
+            h.itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
-                public void run() {
-                    int y = curRow[0].getTop() - (scrollView.getHeight() - curRow[0].getHeight()) / 2;
-                    scrollView.scrollTo(0, Math.max(0, y));
+                public void onClick(View v) {
+                    playIndex(idx);
+                    h.dialog.dismiss();
                 }
             });
+            // 缩略图：先取缓存，没有则占位，未入队过的才抓帧（避免快速滑动重复排队）
+            Bitmap cached = thumbCache.get(listIds[position]);
+            h.thumb.setImageBitmap(cached);
+            if (cached == null) {
+                h.thumb.setTag(listIds[position]);
+                if (queued.add(listIds[position])) {
+                    loadListThumb(h.thumb, listIds[position]);
+                }
+            } else {
+                h.thumb.setTag(null);
+            }
         }
-    }
 
-    // 限高滚动容器：内容少时自适应，内容多时最高不超过屏幕指定比例
-    private static class MaxHeightScrollView extends ScrollView {
-        private final int maxHeight;
-        MaxHeightScrollView(android.content.Context c, int maxHeight) {
-            super(c);
-            this.maxHeight = maxHeight;
-        }
         @Override
-        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-            heightMeasureSpec = MeasureSpec.makeMeasureSpec(maxHeight, MeasureSpec.AT_MOST);
-            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        public void onViewRecycled(@NonNull VH h) {
+            // 滚走的行取消尚未回填的抓帧结果，避免错位与无效解码
+            h.thumb.setTag(null);
+            h.thumb.setImageDrawable(null);
+            super.onViewRecycled(h);
+        }
+
+        @Override
+        public int getItemCount() {
+            return listIds.length;
+        }
+
+        class VH extends RecyclerView.ViewHolder {
+            final ImageView thumb;
+            final TextView label;
+            final Dialog dialog;
+
+            VH(@NonNull View itemView, ImageView thumb, TextView label) {
+                super(itemView);
+                this.thumb = thumb;
+                this.label = label;
+                this.dialog = dlgRef;
+            }
         }
     }
 
-    // 播单行缩略图：后台抓帧
+    // 当前播单弹窗引用（供 ViewHolder 点击关闭）
+    private Dialog dlgRef;
+
+    // 缩略图内存缓存：按 1/8 可用内存上限，避免整库 4K 原始帧驻留导致滚动 GC 卡顿
+    private final LruCache<String, Bitmap> thumbCache = new LruCache<String, Bitmap>((int) (Runtime.getRuntime().maxMemory() / 8)) {
+        @Override
+        protected int sizeOf(@NonNull String key, @NonNull Bitmap value) {
+            return value.getByteCount() / 1024;
+        }
+    };
+
+    // 播单行缩略图：Android10+ 走 SAF 提供方缩略图通道，旧版抓整帧后缩到目标尺寸，双线程后台执行
     private final java.util.concurrent.ExecutorService listThumbPool =
             java.util.concurrent.Executors.newFixedThreadPool(2);
     private void loadListThumb(final ImageView target, final String vid) {
         listThumbPool.execute(new Runnable() {
             public void run() {
+                float density = getResources().getDisplayMetrics().density;
+                final int tw = (int) (84 * density * 2), th = (int) (50 * density * 2);
+                Uri doc = DocumentsContract.buildDocumentUriUsingTree(
+                        Uri.parse(getIntent().getStringExtra(EX_TREE)), vid);
                 Bitmap bmp = null;
-                MediaMetadataRetriever r = new MediaMetadataRetriever();
-                try {
-                    Uri tree = Uri.parse(getIntent().getStringExtra(EX_TREE));
-                    r.setDataSource(VideoActivity.this,
-                            DocumentsContract.buildDocumentUriUsingTree(tree, vid));
-                    bmp = r.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
-                    if (bmp == null) bmp = r.getFrameAtTime(200000);
-                } catch (Exception ignored) {
-                } finally {
-                    try { r.release(); } catch (Exception ignored) {}
+                // API29+ 优先用 ContentResolver 的缩略图通道，由提供方直接给小图，避免整帧解码
+                if (Build.VERSION.SDK_INT >= 29) {
+                    try {
+                        bmp = getContentResolver().loadThumbnail(doc, new Size(tw, th), null);
+                    } catch (Exception ignored) {
+                        bmp = null;
+                    }
+                }
+                // API23-28 或提供方不支持时，抓关键帧整帧再中心裁剪缩小
+                if (bmp == null) {
+                    MediaMetadataRetriever r = new MediaMetadataRetriever();
+                    Bitmap raw = null;
+                    try {
+                        r.setDataSource(VideoActivity.this, doc);
+                        raw = r.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                        if (raw == null) raw = r.getFrameAtTime(200000,
+                                MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                    } catch (Exception ignored) {
+                    } finally {
+                        try { r.release(); } catch (Exception ignored) {}
+                    }
+                    if (raw != null) bmp = cropThumb(raw, tw, th);
                 }
                 final Bitmap fb = bmp;
                 if (fb != null) {
+                    thumbCache.put(vid, fb);
                     runOnUiThread(new Runnable() {
-                        public void run() { target.setImageBitmap(fb); }
+                        public void run() {
+                            // 行已被复用给其它视频则不回填，防止错位
+                            if (vid.equals(target.getTag())) target.setImageBitmap(fb);
+                        }
                     });
                 }
             }
         });
+    }
+
+    // 整帧中心裁剪缩到列表缩略图尺寸，输出 RGB_565 减半内存，原图立即回收
+    private Bitmap cropThumb(Bitmap src, int tw, int th) {
+        try {
+            Bitmap out = Bitmap.createBitmap(tw, th, Bitmap.Config.RGB_565);
+            Canvas c = new Canvas(out);
+            float s = Math.max((float) tw / src.getWidth(), (float) th / src.getHeight());
+            Matrix m = new Matrix();
+            m.setScale(s, s);
+            m.postTranslate((tw - src.getWidth() * s) / 2f,
+                    (th - src.getHeight() * s) / 2f);
+            c.drawColor(Color.BLACK);
+            c.drawBitmap(src, m, null);
+            return out;
+        } finally {
+            src.recycle();
+        }
     }
 
     private void playIndex(int i) {
@@ -618,6 +731,7 @@ public class VideoActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         listThumbPool.shutdownNow();
         ui.removeCallbacksAndMessages(null);
         if (player != null) {

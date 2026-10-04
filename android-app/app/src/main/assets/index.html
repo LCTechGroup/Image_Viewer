@@ -26,6 +26,10 @@ img{display:block}
 #recTabs{width:100%;max-width:320px;display:none;gap:8px}
 .rtab{flex:1;padding:9px 0;border-radius:10px;background:#232323;color:#9aa0aa;font-size:13px;font-weight:600}
 .rtab.on{background:#fff;color:#000}
+/* 网页端收藏导入导出，仅收藏 tab 显示 */
+#favTools{width:100%;max-width:320px;display:none;gap:8px}
+.ftbtn{flex:1;padding:8px 0;border-radius:10px;background:#232323;color:#bbb;font-size:12.5px}
+.ftbtn:active{background:#333}
 /* 列表限高：超过 42vh 内部滚动，避免历史/收藏过多顶掉署名与清理按钮 */
 #recList{width:100%;max-width:320px;display:none;flex:0 1 auto;flex-direction:column;gap:10px;min-height:0;max-height:38vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:2px}
 #recList::-webkit-scrollbar{width:3px}
@@ -53,29 +57,84 @@ img{display:block}
 #lcMsg{font-size:13px;line-height:1.7;color:#9a9a9a;text-align:center;margin:10px 0 18px}
 #lcBtns{display:flex;gap:10px}
 #lcBtns .bigbtn{max-width:none;padding:11px 6px;font-size:14px;border-radius:12px}
+/* 类别过滤弹窗（文件夹页与搜索页共用同款遮罩） */
+#filterMask,#sfilterMask{position:fixed;inset:0;z-index:61;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.62);padding:30px}
+#filterMask.on,#sfilterMask.on{display:flex}
+#filterBox{width:100%;max-width:330px;background:#1c1c1c;border:1px solid #2e2e2e;border-radius:16px;padding:18px 18px calc(16px + env(safe-area-inset-bottom))}
+#filterTitle{font-size:16px;font-weight:700;color:#f0f0f0;text-align:center;margin-bottom:4px}
+#filterHint{font-size:12px;line-height:1.6;color:#9a9a9a;text-align:center;margin-bottom:14px}
+#filterChips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:16px}
+.fchip{min-width:76px;padding:9px 14px;border-radius:20px;background:#2a2a2a;border:1px solid #3d3d3d;color:#ddd;font-size:13.5px}
+.fchip:active{filter:brightness(.9)}
+.fchip.on{background:#fff;color:#000;border-color:#fff;font-weight:600}
+#filterBox .bigbtn{max-width:none;padding:11px 6px;font-size:14px;border-radius:12px}
+/* 分类清理缓存弹窗 */
+#clearMask{position:fixed;inset:0;z-index:61;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.62);padding:30px}
+#clearMask.on{display:flex}
+#clearBox{width:100%;max-width:330px;background:#1c1c1c;border:1px solid #2e2e2e;border-radius:16px;padding:18px 18px calc(16px + env(safe-area-inset-bottom))}
+#clearTitle{font-size:16px;font-weight:700;color:#f0f0f0;text-align:center;margin-bottom:4px}
+#clearHint{font-size:12px;line-height:1.6;color:#9a9a9a;text-align:center;margin-bottom:14px}
+.citem{display:block;width:100%;padding:12px;border-radius:12px;background:#2a2a2a;border:1px solid #3d3d3d;color:#eee;font-size:14px;margin-bottom:10px}
+.citem:last-child{margin-bottom:0}
+.citem:active{filter:brightness(.9)}
+.citem.danger{background:#d2413a;border-color:#d2413a;color:#fff;font-weight:600}
+.citem.back{background:#fff;border-color:#fff;color:#000;font-weight:600}
+/* 失效的历史文件夹 / 收藏：红底白字 */
+.rec.dead .recname{background:#d2413a;color:#fff;border-color:#d2413a}
+.rec.dead .recname .recroot{color:rgba(255,255,255,.82)}
+.rec.dead .recdel{color:#d2413a}
+#deadMask{position:fixed;inset:0;z-index:62;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.62);padding:30px}
+#deadMask.on{display:flex}
+#deadBox{width:100%;max-width:330px;background:#1c1c1c;border:1px solid #2e2e2e;border-radius:16px;padding:18px 18px calc(16px + env(safe-area-inset-bottom))}
+#deadTitle{font-size:16px;font-weight:700;color:#f0f0f0;text-align:center;margin-bottom:8px}
+#deadMsg{font-size:13px;line-height:1.7;color:#9a9a9a;text-align:center;margin-bottom:16px}
+#deadBtns{display:flex;gap:10px}
+#deadBtns .citem{margin-bottom:0;flex:1}
 /* 主页 */
 #app{position:fixed;inset:0;display:flex;flex-direction:column}
 #fabSwitch{position:fixed;right:16px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:30;width:52px;height:52px;border-radius:50%;background:#fff;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #fabSwitch:active{background:#ccc}
 #fabSwitch svg{width:24px;height:24px;fill:none;stroke:#000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-/* 回到顶部：位于主页键正上方，滚动离开顶部才出现 */
-#fabTop{position:fixed;right:16px;bottom:calc(88px + env(safe-area-inset-bottom));z-index:30;width:46px;height:46px;border-radius:50%;background:rgba(35,35,35,.9);border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.5);transition:opacity .18s,transform .18s}
+/* 回到顶部：位于随机键正上方，滚动离开顶部才出现 */
+#fabTop{position:fixed;right:16px;bottom:calc(146px + env(safe-area-inset-bottom));z-index:30;width:46px;height:46px;border-radius:50%;background:rgba(35,35,35,.9);border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.5);transition:opacity .18s,transform .18s}
 #fabTop:active{background:rgba(60,60,60,.95)}
 #fabTop svg{width:22px;height:22px;fill:none;stroke:#eee;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* 随机排序：插在回到顶部与主页键之间，启用时白底黑图标 */
+#fabShuffle{position:fixed;right:16px;bottom:calc(88px + env(safe-area-inset-bottom));z-index:30;width:46px;height:46px;border-radius:50%;background:rgba(35,35,35,.9);border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+#fabShuffle:active{background:rgba(60,60,60,.95)}
+#fabShuffle.on{background:#fff}
+#fabShuffle svg{width:22px;height:22px;fill:none;stroke:#eee;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#fabShuffle.on svg{stroke:#000}
 /* 搜索 */
 #searchBar{position:fixed;top:0;left:0;right:0;z-index:40;display:none;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 10px 10px;background:#141414;border-bottom:1px solid #2a2a2a}
 #searchBar.on{display:flex}
 #searchInput{flex:1;height:38px;border-radius:19px;background:#232323;border:none;color:#eee;font-size:14px;padding:0 16px;outline:none}
 #searchInput::placeholder{color:#888}
 #searchClose{flex:0 0 auto;width:38px;height:38px;border-radius:50%;background:transparent;color:#ccc;font-size:22px;border:none}
-#searchScope{flex:0 0 auto;height:34px;padding:0 12px;border-radius:17px;background:#232323;color:#9a9a9a;font-size:12px;border:none;white-space:nowrap}
-#searchScope.on{background:#fff;color:#000;font-weight:600}
+/* 搜索栏右侧图标键：范围（文件夹树/当前层）与类别过滤，38px 方形，启用白底黑图标 */
+.sbtn{flex:0 0 auto;width:38px;height:38px;border-radius:10px;background:#232323;border:none;display:flex;align-items:center;justify-content:center;padding:0}
+.sbtn:active{background:#333}
+.sbtn svg{width:20px;height:20px;fill:none;stroke:#ddd;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sbtn.on{background:#fff}
+.sbtn.on svg{stroke:#000}
+/* 范围键：含子目录时显示树状图标，仅当前层时显示单层图标 */
+#searchScope .ss-flat{display:none}
+#searchScope:not(.on) .ss-deep{display:none}
+#searchScope:not(.on) .ss-flat{display:block}
 #searchResults{position:fixed;inset:0;z-index:39;top:calc(64px + env(safe-area-inset-top));background:#000;display:none;overflow-y:auto;padding:8px 10px calc(90px + env(safe-area-inset-bottom))}
 #searchResults.on{display:block}
-.sres{display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid #1c1c1c}
-.sres .sicon{flex:0 0 auto;width:26px;text-align:center;color:#9a9a9a}
+.sres{display:flex;align-items:center;gap:10px;padding:7px 6px;border-bottom:1px solid #1c1c1c}
+.sres .sicon{flex:0 0 auto;width:48px;height:48px;border-radius:8px;overflow:hidden;background:#0a0a0a;display:flex;align-items:center;justify-content:center;position:relative}
+.sres .sicon img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sres .sicon svg{width:26px;height:26px;fill:none;stroke:#9a9a9a;stroke-width:1.6}
+.sres .sicon.ic-folder svg{stroke:#8a8d93}
+.sres .sicon.ic-txt{background:#10161d}
+.sres .sicon.ic-txt svg{stroke:#7fb0e0}
+.sres .sicon.ic-web{background:#0c130f}
+.sres .sicon.ic-web svg{stroke:#7fd3a4}
+.sres .sicon.ic-video svg{fill:#fff;stroke:none;opacity:.95;filter:drop-shadow(0 1px 4px rgba(0,0,0,.9))}
 .sres .sname{flex:1;min-width:0;color:#ddd;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sres .spath{display:block;font-size:11px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spath{display:block;font-size:11px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sres:active{background:#1c1c1c}
 #searchEmpty{color:#777;text-align:center;padding:40px 0;font-size:13px}
 header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + env(safe-area-inset-top)) 10px 8px;background:#141414;border-bottom:1px solid #2a2a2a}
@@ -292,6 +351,7 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
 #helpBody li:last-child{margin-bottom:0}
 #helpBody kbd{display:inline-block;background:#2a2a2a;border:1px solid #3d3d3d;border-radius:6px;padding:0 7px;font-size:11.5px;color:#eee;line-height:1.7;white-space:nowrap}
 .tag-app{display:inline-block;background:#fff;color:#000;border-radius:10px;padding:0 7px;font-size:10px;font-weight:700;line-height:16px;margin-left:7px;vertical-align:1px}
+.tag-web{display:inline-block;background:transparent;color:#bbb;border:1px solid #555;border-radius:10px;padding:0 7px;font-size:10px;font-weight:700;line-height:15px;margin-left:7px;vertical-align:1px}
 .help-tip{font-size:12px;line-height:1.75;color:#7c7f85;margin:2px 2px 0}
 </style>
 </head>
@@ -305,6 +365,11 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
     <button class="rtab on" data-t="rec">历史文件夹</button>
     <button class="rtab" data-t="fav">收藏</button>
   </div>
+  <div id="favTools">
+    <button class="ftbtn" id="btnFavExport">导出收藏(JSON)</button>
+    <button class="ftbtn" id="btnFavImport">导入收藏(JSON)</button>
+  </div>
+  <input type="file" id="favImportInput" accept=".json,application/json" class="hidden">
   <div id="recList"></div>
   <div id="recEmpty"></div>
   <div class="home-actions" id="homeActions">
@@ -329,6 +394,60 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
   </div>
 </div>
 
+<div id="filterMask">
+  <div id="filterBox">
+    <div id="filterTitle">显示内容</div>
+    <div id="filterHint">点选要显示的类别，可多选；全部不选时显示文件夹内全部内容</div>
+    <div id="filterChips">
+      <button class="fchip" data-k="dir">文件夹</button>
+      <button class="fchip" data-k="img">图片</button>
+      <button class="fchip" data-k="video">视频</button>
+      <button class="fchip" data-k="mht">离线网页</button>
+      <button class="fchip" data-k="txt">文本文档</button>
+    </div>
+    <button class="bigbtn" id="filterDone">完成</button>
+  </div>
+</div>
+
+<div id="clearMask">
+  <div id="clearBox">
+    <div id="clearTitle">清理缓存</div>
+    <div id="clearHint">可分类清理；历史文件夹、授权与收藏始终保留</div>
+    <button class="citem" data-c="img">阅览器图片缓存</button>
+    <button class="citem" data-c="tree">文件夹路径缓存</button>
+    <button class="citem" data-c="hist">浏览历史缓存</button>
+    <button class="citem" data-c="reader">阅读器缓存</button>
+    <button class="citem danger" data-c="all">所有缓存</button>
+    <button class="citem back" data-c="cancel">不清理，返回</button>
+  </div>
+</div>
+
+<div id="sfilterMask">
+  <div id="filterBox">
+    <div id="filterTitle">搜索类别</div>
+    <div id="filterHint">点选参与搜索的类别，可多选；全部不选即搜索全部类型</div>
+    <div id="sfilterChips">
+      <button class="fchip on" data-k="dir">文件夹</button>
+      <button class="fchip on" data-k="img">图片</button>
+      <button class="fchip on" data-k="video">视频</button>
+      <button class="fchip on" data-k="mht">离线网页</button>
+      <button class="fchip on" data-k="txt">文本文档</button>
+    </div>
+    <button class="bigbtn" id="sfilterDone">完成</button>
+  </div>
+</div>
+
+<div id="deadMask">
+  <div id="deadBox">
+    <div id="deadTitle">该项已失效</div>
+    <div id="deadMsg">文件或文件夹可能已被移动或删除，是否从列表中删除？</div>
+    <div id="deadBtns">
+      <button class="citem back" id="deadNo">保留</button>
+      <button class="citem danger" id="deadYes">删除</button>
+    </div>
+  </div>
+</div>
+
 <div id="app" class="hidden">
   <header>
     <button class="hbtn" id="btnUp" title="上级">
@@ -338,8 +457,8 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
     <button class="hbtn" id="btnSearch" title="搜索">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
     </button>
-    <button class="hbtn" id="btnShuffle" title="随机排序">
-      <svg viewBox="0 0 24 24"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+    <button class="hbtn" id="btnFilter" title="过滤">
+      <svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8v5l-4 2v-7z"/></svg>
     </button>
     <button class="hbtn" id="btnRefresh" title="重新读取">
       <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
@@ -349,6 +468,9 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
   <button id="fabTop" title="回到顶部" class="hidden">
     <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
   </button>
+  <button id="fabShuffle" title="随机排序">
+    <svg viewBox="0 0 24 24"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+  </button>
   <button id="fabSwitch" title="返回主页">
     <svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5.5 9.5V20h13V9.5M9.5 20v-6h5v6"/></svg>
   </button>
@@ -356,7 +478,13 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
 
   <div id="searchBar">
     <input id="searchInput" type="text" placeholder="搜索，空格分隔多个关键词" enterkeyhint="search">
-    <button id="searchScope" class="on" title="是否包含子目录">含子目录</button>
+    <button class="sbtn on" id="searchScope" title="含子目录 / 仅当前层">
+      <svg class="ss-deep" viewBox="0 0 24 24"><path d="M3 7h5l2 2h11v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <svg class="ss-flat" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
+    </button>
+    <button class="sbtn" id="searchFilter" title="过滤类别">
+      <svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8v5l-4 2v-7z"/></svg>
+    </button>
     <button id="searchClose">×</button>
   </div>
   <div id="searchResults"></div>
@@ -374,8 +502,8 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
     <button class="vbtn" id="btnStrip" title="条漫连续滚动">
       <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6" rx="1.5"/><rect x="4" y="14" width="16" height="6" rx="1.5"/></svg>
     </button>
-    <button class="vbtn" id="btnBar" title="进度条">
-      <svg viewBox="0 0 24 24"><rect x="3" y="10" width="18" height="4" rx="2"/><circle cx="9" cy="12" r="2.4"/></svg>
+    <button class="vbtn" id="btnWake" title="屏幕常亮">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
     </button>
     <button class="vbtn" id="btnMode">
       <span id="icoMode"></span>
@@ -501,8 +629,11 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
         <li>点击 <kbd>选择文件夹</kbd>，授权一个手机上的文件夹后即可浏览其完整目录结构</li>
         <li>授权过的文件夹会出现在「历史文件夹」列表，点右侧「×」可删除记录（不会删除原文件）</li>
         <li>长按任意子文件夹或 <kbd>.txt</kbd> 文本文档可收藏，在「收藏」页快速重开，再次长按取消；收藏内容属于其他文件夹时，App 自动切换授权树，网页版会重新请求一次文件夹权限</li>
-        <li><kbd>清理缓存</kbd> 释放已加载的缩略图缓存和阅读记录；文件夹授权与收藏会保留</li>
+        <li>授权丢失的历史文件夹、已被移动或删除的收藏会变成红底白字的「已失效」项，点击确认后即可删除；文件重新出现时会自动恢复正常</li>
+        <li>网页版「收藏」页可导出收藏为 JSON 文件备份，也可从 JSON 导入，导入默认与现有收藏合并去重；跨文件夹的收藏打开时仍需重新授权一次<span class="tag-web">仅网页</span></li>
+        <li><kbd>清理缓存</kbd> 可分类清理：阅览器图片缓存（含离线网页临时文件）、文件夹路径缓存、阅读位置等浏览历史、阅读器个性设置，也可一键清理全部；历史文件夹、授权与收藏始终保留</li>
         <li><kbd>上次浏览</kbd> 可直接回到最近一次访问的文件夹，并精确恢复到上次浏览的子目录；App 打开即自动恢复，网页版会先重新请求一次文件夹授权</li>
+        <li>再次打开授权过的文件夹时先用本机索引秒进，随后在后台自动检查文件增删，有变化会提示「目录已更新」并保留当前位置；顶栏刷新键可立即手动更新</li>
       </ul>
     </div>
 
@@ -511,9 +642,10 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
       <ul>
         <li><kbd>‹</kbd> 返回上一层，在根目录时返回主页</li>
         <li><kbd>↻</kbd> 重新读取当前目录，文件有增删时用来刷新</li>
-        <li><kbd>⤨</kbd> 随机排序：打乱当前目录内容，再按一次恢复名称排序；进入子文件夹或切换目录会自动恢复</li>
-        <li><kbd>⌕</kbd> 按名称搜索文件和文件夹，空格分隔的多个关键字需全部命中；可用「含子目录 / 仅当前层」键切换范围</li>
-        <li><kbd>⌂</kbd> 右下角主页键返回主页，当前阅读位置会被记住</li>
+        <li><kbd>⤨</kbd> 右下角随机键（主页键上方）打乱当前目录内容，再按一次恢复名称排序；进入子文件夹或切换目录会自动恢复</li>
+        <li><kbd>⌕</kbd> 按名称搜索文件和文件夹，空格分隔的多个关键字需全部命中；树状 / 单层图标键切换「含子目录 / 仅当前层」，旁边漏斗键可按文件夹、图片、视频、离线网页、文本文档过滤；再次打开搜索默认复现上次的关键词与条件（本次使用期间）</li>
+        <li><kbd>过滤</kbd> 键在搜索与重新读取之间，点开后勾选要显示的类别（文件夹 / 图片 / 视频 / 离线网页 / 文本文档），可多选；全部不选即显示全部内容，启用时过滤键变白；只对当前目录生效，进入其他目录自动恢复</li>
+        <li><kbd>⌂</kbd> 右下角主页键返回主页，当前阅读位置会被记住；随机键正上方是回到顶部键，向下滚动后才出现</li>
         <li>图片显示缩略图、视频显示首帧封面（多个视频时依次加载，约 6 秒取不到则显示播放三角）</li>
       </ul>
     </div>
@@ -524,7 +656,8 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
         <li>点击图片进入，轻点屏幕中央显示 / 隐藏菜单，滑动翻页</li>
         <li>模式键循环切换：<kbd>↓</kbd> 上下（默认连续条漫）、<kbd>»</kbd> 左右翻页、<kbd>«</kbd> 右左翻页；上下模式可再按条漫键切换连续滚动与整页吸附</li>
         <li>双指捏合可放大至 5 倍，放大后单指拖动，翻页时自动恢复初始大小和位置</li>
-        <li>底部进度条拖动跳转，拖动时上方显示目标页缩略图，松手后才翻页；一次手势最多翻一页</li>
+        <li>菜单打开时底部进度条默认显示，拖动跳转，拖动时上方显示目标页缩略图，松手后才翻页；一次手势最多翻一页</li>
+        <li>顶部太阳键切换屏幕常亮，开启后阅读时屏幕不会自动息屏，退出阅览自动恢复，设置自动记忆</li>
         <li>右上角模式键正下方有横屏键，可锁定横屏观看，再按恢复竖屏；退出阅览自动还原<span class="tag-app">仅 App</span></li>
         <li>音量键翻页：音量减前进、音量加后退<span class="tag-app">仅 App</span></li>
         <li>阅读位置自动记忆，主页出现「从上次位置继续」卡片；随机排序的进度单独记录</li>
@@ -539,6 +672,7 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
         <li>长按画面 0.2 秒以上加速播放，松开恢复；画面中部横向拖动可快进 / 快退，中央显示目标时间</li>
         <li>右上角面板分别调节播放速度与长按加速（0.25–5.0 倍，每 0.25 一档，自动记忆）</li>
         <li>循环键切换「1x 单次播放 / ↻ 单个循环」；同一文件夹有多个视频时可打开播单，带首帧缩略图，点按切换</li>
+        <li>播放时屏幕默认常亮，暂停或播完后恢复自动息屏</li>
         <li>倍速键正下方有横屏键，可锁定横屏观看，再按恢复竖屏<span class="tag-app">仅 App</span></li>
         <li>返回键优先关闭播放器，回到文件列表</li>
       </ul>
@@ -590,19 +724,25 @@ var TXT_EXT = ['txt']
 var collator = new Intl.Collator('zh-Hans-CN',{numeric:true,sensitivity:'base'})
 function nameCmp(a,b){return collator.compare(a.name,b.name)}
 // 文件大类：图片(0)、视频(1)、网页归档mht(2)、文本(3)、其他(4)；同类内再按名称排
-function fileClass(n){
-  var nm=n.name
-  if(isImgName(nm))return 0
-  if(isVideoName(nm))return 1
-  if(isMhtName(nm))return 2
-  if(isTxtName(nm))return 3
-  return 4
+// 结果缓存在文件对象 _c 上，万级文件排序时每个文件只做一次扩展名判断
+function fileClass(f){
+  if(f._c!=null)return f._c
+  var nm=f.name,c=4
+  if(isImgName(nm))c=0
+  else if(isVideoName(nm))c=1
+  else if(isMhtName(nm))c=2
+  else if(isTxtName(nm))c=3
+  f._c=c
+  return c
 }
 function fileCmp(a,b){
   var ca=fileClass(a),cb=fileClass(b)
   return ca!==cb?ca-cb:collator.compare(a.name,b.name)
 }
 function extOf(n){var i=n.lastIndexOf('.');return i<0?'':n.slice(i+1).toLowerCase()}
+// App 原生虚拟主机域名，与 Java MainActivity.HOST 一致；直接拼地址避免每文件一次 JNI 桥调用
+var APP_HOST='appimg.local'
+function makeVurl(id,name){return 'https://'+APP_HOST+'/i?d='+encodeURIComponent(id)+'&n='+encodeURIComponent(name)}
 function isImgName(n){return IMG_EXT.indexOf(extOf(n))>=0}
 function isVideoName(n){return VIDEO_EXT.indexOf(extOf(n))>=0}
 function isMhtName(n){return MHT_EXT.indexOf(extOf(n))>=0}
@@ -642,14 +782,32 @@ function webRecAdd(h){
 }
 function webRecRemove(name){
   webHandles=webHandles.filter(function(h){return h.name!==name})
-  return idbSet('dirHandles',webHandles)
+  // 与历史记录一一对应的树骨架缓存同步删除
+  return idbSet('dirHandles',webHandles).then(function(){return idbSet('treeCache:'+name,null)})
 }
 
 // ============ 目录树数据 ============
 var ROOT=null, CUR=null, PATHMAP={}
 var allUrls=new Set()
 function makeNode(name,parent){var n={name:name,path:parent?parent.path+'/'+name:'',parent:parent,dirs:[],files:[],allImages:false};PATHMAP[n.path]=n;return n}
-function itemGetFile(it){return it.handle?it.handle.getFile():Promise.resolve(it.file)}
+function itemGetFile(it){
+  if(it.handle)return it.handle.getFile()
+  if(it.file)return Promise.resolve(it.file)
+  // 骨架缓存秒进的树没有 handle：按路径从根句柄逐级惰性解析，目录句柄缓存在节点 _dh
+  return resolveItemHandle(it).then(function(h){it.handle=h;return h.getFile()})
+}
+function resolveItemHandle(it){
+  var parts=it.path.split('/').slice(1),name=parts.pop()
+  var nodePath='',dh=window.dirHandle
+  return parts.reduce(function(p,seg){
+    nodePath+='/'+seg
+    return p.then(function(cur){
+      var mn=PATHMAP[nodePath]
+      if(mn&&mn._dh)return mn._dh
+      return cur.getDirectoryHandle(seg,{create:false}).then(function(d){if(mn)mn._dh=d;return d})
+    })
+  },Promise.resolve(dh)).then(function(parent){return parent.getFileHandle(name,{create:false})})
+}
 function sortNode(n){n.dirs.sort(nameCmp);n.files.sort(fileCmp);for(var i=0;i<n.dirs.length;i++)sortNode(n.dirs[i])}
 function finishNode(n){
   var imgCount=0
@@ -715,7 +873,7 @@ function cancelLoading(){
   showBar(false);$('loadCancelMask').classList.remove('on')
   window.__pendingFav=null;window.__pendingFavFile=null;window.__wantLast=false;window.__refreshPath=null
   releaseAll()
-  ROOT=null;CUR=null;PATHMAP={};shufflePath=null;shuffleDirs=null;shuffleFiles=null
+  ROOT=null;CUR=null;PATHMAP={};shufflePath=null;shuffleDirs=null;shuffleFiles=null;filterPath=null;filterKinds=null
   window.dirHandle=null
   $('app').classList.add('hidden')
   showHome()
@@ -723,41 +881,115 @@ function cancelLoading(){
 $('lcNo').addEventListener('click',function(){$('loadCancelMask').classList.remove('on')})
 $('loadCancelMask').addEventListener('click',function(e){if(e.target===this)$('loadCancelMask').classList.remove('on')})
 $('lcYes').addEventListener('click',cancelLoading)
+// web 端树骨架（不含句柄），按根名存 IDB；保守方案：扫描仍串行，只加秒进缓存
+function webSkeletonOf(n){
+  return {name:n.name,path:n.path,
+    dirs:n.dirs.map(webSkeletonOf),
+    files:n.files.map(function(f){return {name:f.name,path:f.path}})}
+}
+// 全量串行扫描一棵新手柄树，排序后返回根节点（含句柄）
+function webFullWalk(handle,gen){
+  // 扫描用独立 PATHMAP，不污染当前骨架树；被热替换采用时再整体挂上
+  var oldMap=PATHMAP
+  PATHMAP={}
+  var root=makeNode(handle.name,null)
+  root._uri='fs:'+handle.name
+  var stats={n:0}
+  return walkHandle(handle,root,stats).then(function(){
+    if(gen!==appLoadTok){PATHMAP=oldMap;return null}
+    sortNode(root);finishNode(root)
+    root._sig=treeSigOfData(root)
+    root._pm=PATHMAP
+    PATHMAP=oldMap
+    return root
+  },function(e){PATHMAP=oldMap;throw e})
+}
+// 无变化时把全量树的句柄静默挂回骨架树的旧对象，网格无需重建
+function webMergeHandles(oldRoot,newRoot){
+  var byPath={}
+  ;(function collect(n){n.files.forEach(function(f){byPath[f.path]=f});n.dirs.forEach(collect)})(newRoot)
+  ;(function fill(n){
+    n.files.forEach(function(f){var nf=byPath[f.path];if(nf&&nf.handle)f.handle=nf.handle})
+    n.dirs.forEach(fill)
+  })(oldRoot)
+}
+function webEnterLoaded(withPf){
+  var pf=window.__pendingFavFile
+  clearRecDead(ROOT._uri)
+  var target=resolveTreeTarget()
+  showBar(false);$('welcome').classList.add('hidden')
+  history.replaceState({t:'folder',path:target.path},'')
+  enterFolder(target,false);syncBack()
+  notifyLastMissing()
+  // 收藏的是 TXT：全量进入时权威判定；缓存秒进时找到即开，找不到留给后台回扫后处理
+  if(pf){
+    var fi=target.files.filter(function(x){return x.name===pf.name})[0]
+    if(fi){window.__pendingFavFile=null;openFavedEntry(pf,target,fi)}
+    else if(withPf){window.__pendingFavFile=null;toast('收藏的文件已不存在或已移动')}
+  }
+}
 function loadFromHandle(handle){
   var gen=beginLoad()
   window.dirHandle=handle
   releaseAll()
-  ROOT=makeNode(handle.name,null)
-  ROOT._uri='fs:'+handle.name
-  shufflePath=null;shuffleDirs=null;shuffleFiles=null
-  PATHMAP={'':ROOT}
-  var stats={n:0}
-  return walkHandle(handle,ROOT,stats).then(function(){
+  var cacheKey='treeCache:'+handle.name
+  return idbGet(cacheKey).then(function(sk){
     if(gen!==appLoadTok)return
-    sortNode(ROOT);finishNode(ROOT)
-    return idbSet('dirHandle',handle)
-  }).then(function(){
-    if(gen!==appLoadTok)return
-    return webRecAdd(handle)
-  }).then(function(){
-    if(gen!==appLoadTok)return
-    renderRecords()
-    var pf=window.__pendingFavFile
-    var target=resolveTreeTarget()
-    showBar(false);$('welcome').classList.add('hidden')
-    history.replaceState({t:'folder',path:target.path},'')
-    enterFolder(target,false);syncBack()
-    // 收藏的是 TXT：进到所在目录后自动拉起阅读器（视频/MHT 不会在网页端产生收藏）
-    if(pf){
-      window.__pendingFavFile=null
-      var fi=target.files.filter(function(x){return x.name===pf.name})[0]
-      if(fi)openFavedEntry(pf,target,fi)
-      else toast('收藏的文件已不存在或已移动')
+    if(sk&&sk.name===handle.name){
+      // 缓存秒进：骨架树无句柄，打开文件时惰性解析；随后后台静默全量重扫
+      ROOT=buildTreeFromData(sk)
+      webEnterLoaded(false)
+      var force=!!window.__forceRefresh;window.__forceRefresh=false
+      return webFullWalk(handle,gen).then(function(full){
+        if(!full)return
+        if(ROOT._uri!==full._uri)return
+        clearRecDead('fs:'+handle.name)
+        idbSet(cacheKey,webSkeletonOf(full));idbSet('dirHandle',handle);webRecAdd(handle)
+        if(full._sig===ROOT._sig){
+          webMergeHandles(ROOT,full)
+          if(force)toast('已是最新')
+        }else{
+          applyTreeUpdate(full,true)
+        }
+        // 回扫为权威结果：缓存秒进时未打开的收藏文件在此收尾
+        var pf2=window.__pendingFavFile
+        if(pf2){
+          var par2=PATHMAP[pf2.path]
+          var fi2=par2&&par2.files.filter(function(x){return x.name===pf2.name})[0]
+          if(fi2){window.__pendingFavFile=null;openFavedEntry(pf2,par2,fi2)}
+          else{window.__pendingFavFile=null;markPendingFavDead(pf2);toast('收藏的文件已不存在或已移动')}
+        }
+      }).catch(function(e){
+        // 后台重扫发现文件夹已删除：标红主页历史（缓存树仍可浏览列表，点文件会失败）
+        if(e&&(e.name==='NotFoundError'||e.name==='SecurityError')){
+          markRecDead('fs:'+handle.name);renderRecords()
+          toast('授权的文件夹已失效，可在主页删除该记录')
+        }
+      })
     }
+    window.__forceRefresh=false
+    return webFullWalk(handle,gen).then(function(full){
+      if(!full)return
+      ROOT=full
+      return idbSet(cacheKey,webSkeletonOf(full))
+    }).then(function(){
+      if(gen!==appLoadTok)return
+      return idbSet('dirHandle',handle)
+    }).then(function(){
+      if(gen!==appLoadTok)return
+      return webRecAdd(handle)
+    }).then(function(){
+      if(gen!==appLoadTok)return
+      renderRecords();webEnterLoaded(true)
+    })
   }).catch(function(e){
     if(gen!==appLoadTok)return
     showBar(false);endLoadSync()
     if(e&&e.name==='NotAllowedError')toast('没有访问权限，请重新选择文件夹')
+    else if(e&&(e.name==='NotFoundError'||e.name==='SecurityError')){
+      markRecDead('fs:'+handle.name);renderRecords()
+      toast('文件夹已失效，请删除后重新选择')
+    }
     else toast('读取失败：'+(e&&e.message||e))
   })
 }
@@ -781,41 +1013,134 @@ function resolveTreeTarget(){
     window.__wantLast=false
     var saved=localStorage.getItem('ld:'+ROOT.name)
     if(saved&&PATHMAP[saved])return PATHMAP[saved]
+    // 记录的子目录已失效：清掉僵尸记录、回根目录，调用方负责 toast
+    if(saved){localStorage.removeItem('ld:'+ROOT.name);window.__lastMissing=true}
   }
   return ROOT
 }
-function enterTreeFromData(j){
-  releaseAll()
+// 进入目录后若上次浏览记录已失效，提示一次
+function notifyLastMissing(){
+  if(window.__lastMissing){window.__lastMissing=false;toast('上次浏览的文件夹已不存在，回到根目录')}
+}
+// 结构签名：目录路径 + 文件路径/修改时间，排序后拼接；两端共用，用于判断后台重扫是否有变化
+function treeSigOfData(j){
+  var a=[]
+  ;(function walk(n){
+    ;(n.dirs||[]).forEach(function(d){a.push('d'+d.path);walk(d)})
+    ;(n.files||[]).forEach(function(f){a.push('f'+f.path+'|'+(f.m||0))})
+  })(j)
+  return a.sort().join('~')
+}
+function buildTreeFromData(j){
   PATHMAP={}
   function build(n,parent){
     var node=makeNode(n.name,parent)
     ;(n.dirs||[]).forEach(function(d){node.dirs.push(build(d,node))})
     ;(n.files||[]).forEach(function(f){
-      node.files.push({name:f.name,path:f.path,id:f.id||'',vurl:f.id?AB.vurl(f.id,f.name):''})
+      node.files.push({name:f.name,path:f.path,id:f.id||'',m:f.m||0,vurl:f.id?makeVurl(f.id,f.name):''})
     })
     return node
   }
-  ROOT=build(j,null);PATHMAP['']=ROOT
-  ROOT._uri=j.uri||('fs:'+ROOT.name)
-  shufflePath=null;shuffleDirs=null;shuffleFiles=null
-  sortNode(ROOT);finishNode(ROOT)
+  var root=build(j,null);PATHMAP['']=root
+  root._uri=j.uri||('fs:'+root.name)
+  shufflePath=null;shuffleDirs=null;shuffleFiles=null;filterPath=null;filterKinds=null
+  sortNode(root);finishNode(root)
+  root._sig=treeSigOfData(j)
+  return root
+}
+function enterTreeFromData(j){
+  releaseAll()
+  ROOT=buildTreeFromData(j)
   var pf=window.__pendingFavFile
   var target=resolveTreeTarget()
   showBar(false)
   $('welcome').classList.add('hidden')
   history.replaceState({t:'folder',path:target.path},'')
   enterFolder(target,false)
+  notifyLastMissing()
   // 收藏的是视频/MHT：进到所在目录后自动拉起
   if(pf){
     window.__pendingFavFile=null
     var fi=target.files.filter(function(x){return x.name===pf.name})[0]
     if(fi)openFavedEntry(pf,target,fi)
-    else toast('收藏的文件已不存在或已移动')
+    else{markPendingFavDead(pf);toast('收藏的文件已不存在或已移动')}
   }
+  clearRecDead(ROOT._uri)
   renderRecords();syncBack()
 }
 // 已放弃加载（遮罩关闭）后迟到的树回传直接丢弃，避免半成品树覆盖首页状态
-function bridgeApplyTree(j){if(!appLoading())return;enterTreeFromData(j)}
+// 手动刷新走同一回调但带 __forceRefresh 标记，进入后比对签名提示更新结果
+function bridgeApplyTree(j){
+  if(!appLoading())return
+  var force=!!window.__forceRefresh;window.__forceRefresh=false
+  var oldSig=ROOT?ROOT._sig:null
+  enterTreeFromData(j)
+  if(force)toast(oldSig&&oldSig===ROOT._sig?'已是最新':'目录已更新')
+}
+// 缓存秒进：建树进入并立即关 loading，后台全量重扫的结果随后走 __onTreeUpdate
+function bridgeApplyCachedTree(j){
+  if(!appLoading())return
+  enterTreeFromData(j)
+}
+// 后台静默重扫完成：同树才处理，签名相同零打扰，有变化则热替换
+function bridgeTreeUpdate(j){
+  if(!ROOT||!j||j.uri!==ROOT._uri)return
+  var ns=treeSigOfData(j)
+  if(ROOT._sig===ns)return
+  if($('viewer').classList.contains('on')||nvOn||vpOn){
+    window.__pendingTree=buildTreeFromData(j)
+    toast('目录已更新，返回列表后生效')
+    return
+  }
+  applyTreeUpdate(buildTreeFromData(j),true)
+}
+// 目录有变化时的热替换：newRoot 为已构建根节点（web 树含文件句柄）；保留路径/滚动/过滤，随机排序静默关闭
+function applyTreeUpdate(newRoot,showToast){
+  var oldPath=CUR?CUR.path:'',oldScroll=$('grid').scrollTop||0
+  var oldFilterOn=isFiltered(CUR),oldKinds=filterKinds
+  releaseAll()
+  ROOT=newRoot
+  if(newRoot._pm)PATHMAP=newRoot._pm
+  shufflePath=null;shuffleDirs=null;shuffleFiles=null
+  if(oldFilterOn){filterPath='__restore__';filterKinds=oldKinds}
+  var target=PATHMAP[oldPath]
+  if(!target){
+    // 当前目录被删：退到仍存在的最近祖先
+    target=ROOT
+    var parts=oldPath.split('/')
+    for(var i=parts.length-1;i>=1;i--){
+      var p=parts.slice(0,i).join('/')
+      if(PATHMAP[p]){target=PATHMAP[p];break}
+    }
+  }
+  if(oldFilterOn)filterPath=target.path;else{filterPath=null;filterKinds=null}
+  CUR=target
+  $('welcome').classList.add('hidden');$('app').classList.remove('hidden')
+  renderCrumb(target);renderGrid(target)
+  if(ROOT&&target!==ROOT)localStorage.setItem('ld:'+ROOT.name,target.path)
+  history.replaceState({t:'folder',path:target.path},'')
+  // 卡片分帧入 DOM，持续钳制目标滚动位置直到高度撑起或超时约 1 秒
+  if(oldScroll>0&&target.path===oldPath){
+    var g=$('grid'),frames=0
+    ;(function tick(){
+      g.scrollTop=oldScroll
+      if(++frames>60||Math.abs(g.scrollTop-oldScroll)<2)return
+      requestAnimationFrame(tick)
+    })()
+  }
+  syncBack()
+  renderRecords()
+  if(showToast)toast('目录已更新')
+}
+// 阅读器/小说/视频关闭时，若期间目录树已更新则补应用（pending 存的是已构建根节点）
+function consumePendingTree(){
+  var nr=window.__pendingTree
+  if(!nr)return
+  window.__pendingTree=null
+  if(nr._uri!==ROOT._uri)return
+  if(nr._sig===ROOT._sig)return
+  applyTreeUpdate(nr,true)
+}
 // ============ 收藏 ============
 var recTab='rec'
 function favList(){try{return JSON.parse(localStorage.getItem('favs')||'[]')}catch(e){return[]}}
@@ -931,7 +1256,7 @@ function openFav(f){
         $('welcome').classList.add('hidden')
         enterFolder(par,true)
         openFavedEntry(f,par,item)
-      }else toast('收藏的文件已不存在或已移动')
+      }else{markFavDeadByKey(f.k);toast('收藏的文件已不存在或已移动')}
       return
     }
     if(AB){
@@ -945,7 +1270,7 @@ function openFav(f){
   if(ROOT&&ROOT._uri===f.uri){
     var n=PATHMAP[f.path]
     if(n){$('welcome').classList.add('hidden');enterFolder(n,true)}
-    else toast('收藏的文件夹已不存在或已移动')
+    else{markFavDeadByKey(f.k);toast('收藏的文件夹已不存在或已移动')}
     return
   }
   if(AB){
@@ -965,21 +1290,142 @@ function webOpenFavHandle(f){
     arr=Array.isArray(arr)?arr:[]
     var h=null
     for(var i=0;i<arr.length;i++)if('fs:'+arr[i].name===f.uri){h=arr[i];break}
-    if(!h){toast('该文件夹的浏览器记录已失效，请重新选择后再收藏');appLoadTok++;showBar(false);endLoadSync();return}
+    if(!h){
+      // 根句柄记录已不在：收藏无法再定位，标记为失效
+      markFavDeadByKey(f.k)
+      renderRecords();appLoadTok++;showBar(false);endLoadSync()
+      toast('该文件夹的浏览器记录已失效，收藏已标记，可在收藏页删除')
+      return
+    }
     beginLoad();$('bartext').textContent='正在请求授权…'
+    var fail=function(msg){
+      appLoadTok++;showBar(false);endLoadSync()
+      markFavDeadByKey(f.k);renderRecords();toast(msg)
+    }
     verifyPerm(h).then(function(ok){
-      if(!ok){appLoadTok++;showBar(false);endLoadSync();toast('未授予权限，请重新选择');return}
+      if(!ok){fail('未授予权限，收藏已标记为失效');return}
       if(f.kind)window.__pendingFavFile={path:f.path,name:f.name,kind:f.kind}
       else window.__pendingFav=f.path
       loadFromHandle(h)
-    })
+    }).catch(function(){fail('该文件夹记录已失效，收藏已标记，可在收藏页删除')})
   })
 }
+// ============ 失效项标记（历史授权丢失 / 收藏路径不存在） ============
+function deadRecList(){try{return JSON.parse(localStorage.getItem('deadRecs')||'[]')}catch(e){return[]}}
+function saveDeadRecs(a){localStorage.setItem('deadRecs',JSON.stringify(a))}
+function markRecDead(uri){var a=deadRecList();if(a.indexOf(uri)<0){a.push(uri);saveDeadRecs(a)}}
+function clearRecDead(uri){saveDeadRecs(deadRecList().filter(function(x){return x!==uri}))}
+// App：显式失效标记（扫描发现文件夹已删）优先，其次实时查持久授权；web 用本地记录
+function isRecDead(r){
+  var uri=r.uri||('fs:'+r.name)
+  if(deadRecList().indexOf(uri)>=0)return true
+  if(AB){try{return AB.uriAlive&&AB.uriAlive(uri)===false}catch(e){return false}}
+  return false
+}
+// 当前树加载/更新后，校正属于本树的收藏存活状态；路径重新出现自动恢复
+function refreshFavDead(){
+  if(!ROOT)return
+  var list=favList(),changed=false
+  list.forEach(function(f){
+    if(f.uri!==ROOT._uri)return
+    var alive
+    if(f.kind){
+      var par=PATHMAP[f.path]
+      alive=!!(par&&par.files.some(function(x){return x.name===f.name}))
+    }else{
+      alive=!!PATHMAP[f.path]
+    }
+    if(alive){if(f.dead){f.dead=0;changed=true}}
+    else if(!f.dead){f.dead=1;changed=true}
+  })
+  if(changed)saveFavs(list)
+}
+function markFavDeadByKey(k){
+  var list=favList(),changed=false
+  list.forEach(function(f){if(f.k===k&&!f.dead){f.dead=1;changed=true}})
+  if(changed)saveFavs(list)
+}
+// 跨树打开收藏落空时，按 uri/path/name/kind 匹配标记
+function markPendingFavDead(pf){
+  if(!pf)return
+  var list=favList(),changed=false
+  list.forEach(function(f){
+    if(f.uri===ROOT._uri&&f.path===pf.path&&f.name===pf.name&&f.kind===pf.kind&&!f.dead){f.dead=1;changed=true}
+  })
+  if(changed)saveFavs(list)
+}
+var __deadYesCb=null
+function askDeadRemove(cb){
+  __deadYesCb=cb
+  $('deadMask').classList.add('on');syncBack()
+}
+$('deadNo').addEventListener('click',function(){$('deadMask').classList.remove('on');__deadYesCb=null;syncBack()})
+$('deadMask').addEventListener('click',function(e){if(e.target===this){$('deadMask').classList.remove('on');__deadYesCb=null;syncBack()}})
+$('deadYes').addEventListener('click',function(){
+  $('deadMask').classList.remove('on');syncBack()
+  var cb=__deadYesCb;__deadYesCb=null
+  if(cb)cb()
+})
+// 删除一条历史记录（两端各自走桥 / IDB）
+function deleteHistoryRec(r){
+  var uri=r.uri||('fs:'+r.name)
+  clearRecDead(uri)
+  if(AB){AB.deleteRecord(uri)}else{webRecRemove(r.name)}
+  renderRecords()
+}
+// ============ 网页端收藏导入 / 导出（JSON） ============
+function favsToJSON(){
+  return JSON.stringify({app:'image-browser',type:'favs',v:1,
+    at:new Date().toISOString(),favs:favList()},null,2)
+}
+$('btnFavExport').addEventListener('click',function(){
+  var list=favList()
+  if(!list.length){toast('还没有收藏，无需导出');return}
+  var d=new Date(),p=function(n){return(n<10?'0':'')+n}
+  var name='favorites-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'.json'
+  var a=document.createElement('a')
+  a.href=URL.createObjectURL(new Blob([favsToJSON()],{type:'application/json'}))
+  a.download=name
+  document.body.appendChild(a);a.click();a.remove()
+  setTimeout(function(){URL.revokeObjectURL(a.href)},4000)
+  toast('已导出 '+list.length+' 条收藏')
+})
+$('btnFavImport').addEventListener('click',function(){$('favImportInput').value='';$('favImportInput').click()})
+$('favImportInput').addEventListener('change',function(){
+  var file=this.files&&this.files[0]
+  if(!file)return
+  var reader=new FileReader()
+  reader.onload=function(){
+    var arr
+    try{
+      var data=JSON.parse(String(reader.result))
+      arr=Array.isArray(data)?data:data.favs
+    }catch(e){arr=null}
+    if(!Array.isArray(arr)){toast('文件格式不正确，请选择本软件导出的收藏 JSON');return}
+    var valid=[]
+    for(var i=0;i<arr.length;i++){
+      var f=arr[i]
+      if(f&&typeof f==='object'&&f.k&&f.name&&f.uri){delete f.dead;valid.push(f)}
+    }
+    if(!valid.length){toast('文件中没有可导入的收藏');return}
+    // 默认合并去重：按收藏键 k，已有的保留，新条目按备份顺序排到列表前面
+    var list=favList(),have={}
+    list.forEach(function(f){have[f.k]=1})
+    var add=valid.filter(function(f){return !have[f.k]})
+    if(!add.length){toast('收藏均已存在，无需导入');return}
+    saveFavs(add.concat(list))
+    renderRecords()
+    toast('已导入 '+add.length+' 条收藏'+(valid.length-add.length?'，跳过 '+(valid.length-add.length)+' 条重复':''))
+  }
+  reader.onerror=function(){toast('读取文件失败')}
+  reader.readAsText(file)
+})
 // ============ 历史/收藏列表页 ============
 function renderRecords(){
   var box=$('recList'),empty=$('recEmpty'),tabs=$('recTabs')
   if(!box)return
   box.innerHTML='';empty.style.display='none'
+  refreshFavDead()
   var favs=favList()
   var recs=[]
   if(AB){try{recs=JSON.parse(AB.getRecords()||'[]')}catch(e){recs=[]}}
@@ -990,6 +1436,8 @@ function renderRecords(){
   Array.prototype.forEach.call(tabs.querySelectorAll('.rtab'),function(b){
     b.classList.toggle('on',b.getAttribute('data-t')===recTab)
   })
+  // 导入导出仅网页版收藏页显示（App WebView 不支持网页下载文件）
+  $('favTools').style.display=(!AB&&recTab==='fav')?'flex':'none'
   // "上次浏览"：App 记录过子目录时回到该子目录；网页版由初始化处按记忆句柄显示
   var lastBtn=$('btnLast')
   if(AB){
@@ -1003,10 +1451,18 @@ function renderRecords(){
   if(recTab==='fav'){
     if(!hasFav){empty.textContent='暂无收藏，长按子文件夹、视频或网页归档即可收藏';empty.style.display='block';return}
     favs.forEach(function(f){
-      var row=document.createElement('div');row.className='rec'
+      var row=document.createElement('div');row.className='rec'+(f.dead?' dead':'')
       var b=document.createElement('button');b.className='bigbtn gray recname'
-      b.innerHTML=escapeHtml(f.name)+'<span class="recroot">'+escapeHtml(favLabel(f)+' · '+f.root)+'</span>'
-      b.onclick=function(){openFav(f)}
+      var sub=favLabel(f)+' · '+f.root+(f.dead?' · 已失效':'')
+      b.innerHTML=escapeHtml(f.name)+'<span class="recroot">'+escapeHtml(sub)+'</span>'
+      b.onclick=function(){
+        if(f.dead){askDeadRemove(function(){
+          var list=favList()
+          for(var i=0;i<list.length;i++){if(list[i].k===f.k){list.splice(i,1);break}}
+          saveFavs(list);renderRecords()
+        });return}
+        openFav(f)
+      }
       var d=document.createElement('button');d.className='recdel';d.textContent='×';d.title='移除收藏'
       d.onclick=function(){
         var list=favList()
@@ -1021,10 +1477,13 @@ function renderRecords(){
   if(!hasRec){empty.textContent='暂无历史文件夹';empty.style.display='block';box.style.display='none';return}
   box.style.display='flex'
   recs.forEach(function(r){
-    var row=document.createElement('div');row.className='rec'
+    var dead=isRecDead(r)
+    var row=document.createElement('div');row.className='rec'+(dead?' dead':'')
     var b=document.createElement('button');b.className='bigbtn gray recname'
-    b.textContent='继续浏览：'+r.name
-    if(AB){
+    b.textContent='继续浏览：'+r.name+(dead?'（已失效）':'')
+    if(dead){
+      b.onclick=function(){askDeadRemove(function(){deleteHistoryRec(r)})}
+    }else if(AB){
       // 已加载的同一棵树直接进，不重新走 SAF 遍历
       b.onclick=function(){
         if(ROOT&&ROOT._uri===r.uri){enterFolder(ROOT,true);return}
@@ -1035,7 +1494,14 @@ function renderRecords(){
         beginLoad();$('bartext').textContent='正在读取目录…'
         verifyPerm(r.handle).then(function(ok){
           if(ok)loadFromHandle(r.handle)
-          else{showBar(false);toast('未授予权限，请重新选择')}
+          else{
+            showBar(false);markRecDead('fs:'+r.name);renderRecords()
+            toast('未授予权限，已标记为失效')
+          }
+        }).catch(function(){
+          // 句柄已被浏览器淘汰或彻底失效：授权对话框都拉不起来，直接标红
+          showBar(false);markRecDead('fs:'+r.name);renderRecords()
+          toast('该文件夹记录已失效，请删除后重新选择')
         })
       }
     }
@@ -1057,23 +1523,52 @@ function renderRecords(){
     row.appendChild(b);row.appendChild(d);box.appendChild(row)
   })
 }
-// 清理图片缓存与阅读历史：内存 blob、WebView 磁盘缓存、阅读位置和上次子目录；授权与收藏保留
-function doClearCache(){
+// 分类清理：图片（含 MHT 临时归档）/ 文件夹树索引 / 阅读位置历史 / 阅读器个性设置；授权、历史文件夹、收藏保留
+function clearCacheImg(){
   releaseAll()
   if(AB)AB.clearCache()
-  localStorage.removeItem('vPos')
-  Object.keys(localStorage).forEach(function(k){if(k.slice(0,3)==='ld:')localStorage.removeItem(k)})
   if(CUR&&!$('app').classList.contains('hidden')&&!$('viewer').classList.contains('on'))renderGrid(CUR)
-  toast('缓存与阅读历史已清理')
+}
+function clearCacheTree(){
+  if(AB){AB.clearTreeCache();return}
+  // web 端按根名分别存骨架，遍历历史句柄逐个删除
+  webRecsLoad().then(function(){
+    return Promise.all(webHandles.map(function(h){return idbSet('treeCache:'+h.name,null)}))
+  })
+}
+function clearCacheHist(){
+  localStorage.removeItem('vPos')
+  Object.keys(localStorage).forEach(function(k){
+    if(k.slice(0,3)==='ld:'||k.slice(0,6)==='nvpos:')localStorage.removeItem(k)
+  })
+}
+var READER_CACHE_KEYS=['vMode','vStrip','vWake','vHinted','nvSet','vpSpeed','vpHoldSpeed']
+function clearCacheReader(){
+  READER_CACHE_KEYS.forEach(function(k){localStorage.removeItem(k)})
+  if(AB)AB.clearReaderPrefs()
+}
+function runClearCache(which){
+  if(which==='img'){clearCacheImg();toast('阅览器图片缓存已清理')}
+  else if(which==='tree'){clearCacheTree();toast('文件夹索引已清理，下次打开将重新读取')}
+  else if(which==='hist'){clearCacheHist();toast('阅读位置与浏览记录已清理')}
+  else if(which==='reader'){clearCacheReader();toast('阅读器个性设置已重置')}
+  else if(which==='all'){clearCacheImg();clearCacheTree();clearCacheHist();clearCacheReader();toast('所有缓存已清理')}
 }
 // 同步原生返回键：当前界面按返回是否还留在 App 内
+// 任一模态弹窗打开时，原生返回键必须先进 JS 关弹窗，不能直接退出 App
+function anyModalOpen(){
+  return $('filterMask').classList.contains('on')
+    ||$('sfilterMask').classList.contains('on')
+    ||$('clearMask').classList.contains('on')
+    ||$('deadMask').classList.contains('on')
+}
 function syncBack(){
   if(!AB)return
   var vOn=$('viewer').classList.contains('on')
   var homeOn=!$('welcome').classList.contains('hidden')
   var canUp=!!(ROOT&&CUR&&CUR!==ROOT)
-  // 加载中也要让原生返回键进入 JS，由 appBack 弹放弃确认
-  AB.setBackable(nvOn||vOn||vpOn||canUp||appLoading()||(!homeOn&&!!ROOT))
+  // 加载中也要让原生返回键进入 JS，由 appBack 弹放弃确认；弹窗打开时同样拦截
+  AB.setBackable(nvOn||vOn||vpOn||canUp||appLoading()||(!homeOn&&!!ROOT)||anyModalOpen())
 }
 // 返回记录列表页
 function showHome(){
@@ -1093,6 +1588,14 @@ $('helpClose').addEventListener('click',closeHelp)
 window.appBack=function(){
   // 放弃加载弹窗打开时，返回键等同于"继续加载"关闭弹窗
   if($('loadCancelMask').classList.contains('on')){$('loadCancelMask').classList.remove('on');return}
+  // 文件夹过滤弹窗打开时先关弹窗
+  if($('filterMask').classList.contains('on')){$('filterMask').classList.remove('on');syncBack();return}
+  // 搜索类别过滤弹窗打开时先关弹窗
+  if($('sfilterMask').classList.contains('on')){$('sfilterMask').classList.remove('on');return}
+  // 清理缓存菜单打开时先关菜单
+  if($('clearMask').classList.contains('on')){$('clearMask').classList.remove('on');syncBack();return}
+  // 失效项删除确认弹窗打开时先关弹窗
+  if($('deadMask').classList.contains('on')){$('deadMask').classList.remove('on');__deadYesCb=null;syncBack();return}
   // 文件夹读取中：先确认是否放弃加载回首页，而不是直接退出 App
   if(appLoading()){$('loadCancelMask').classList.add('on');return}
   if($('help').classList.contains('on')){closeHelp();return}
@@ -1111,8 +1614,22 @@ window.appBack=function(){
 }
 if(AB){
   window.__onTree=bridgeApplyTree
+  window.__onTreeCached=bridgeApplyCachedTree
+  window.__onTreeUpdate=bridgeTreeUpdate
   window.__onWalkProgress=function(n){$('bartext').textContent='正在读取目录… '+n+' 项'}
-  window.__onTreeError=function(msg){if(!appLoading())return;showBar(false);endLoadSync();toast('读取失败：'+msg)}
+  window.__onTreeError=function(msg,uri){
+    if(!appLoading())return
+    window.__forceRefresh=false
+    showBar(false);endLoadSync()
+    // 根文件夹已删除/不可访问：该历史标红并退回主页，不再显示成空文件夹
+    if(uri){markRecDead(uri);showHome();renderRecords();toast('文件夹已失效，请删除后重新选择')}
+    else toast('读取失败：'+msg)
+  }
+  // 缓存秒进后的后台重扫发现根文件夹已不存在
+  window.__onTreeGone=function(uri){
+    markRecDead(uri);renderRecords()
+    toast('授权的文件夹已失效，可在主页删除该记录')
+  }
   window.__onTreeCancel=function(){if(!appLoading())return;showBar(false);endLoadSync()}
 }
 function pickDir(){
@@ -1145,13 +1662,22 @@ $('fabTop').addEventListener('click',function(){$('grid').scrollTo({top:0,behavi
 Array.prototype.forEach.call(document.querySelectorAll('#recTabs .rtab'),function(b){
   b.addEventListener('click',function(){recTab=b.getAttribute('data-t');renderRecords()})
 })
-$('btnClearHome').addEventListener('click',doClearCache)
+$('btnClearHome').addEventListener('click',function(){$('clearMask').classList.add('on');syncBack()})
+Array.prototype.forEach.call(document.querySelectorAll('#clearBox .citem'),function(b){
+  b.addEventListener('click',function(){
+    var which=b.getAttribute('data-c')
+    $('clearMask').classList.remove('on');syncBack()
+    if(which!=='cancel')runClearCache(which)
+  })
+})
+$('clearMask').addEventListener('click',function(e){if(e.target===this){$('clearMask').classList.remove('on');syncBack()}})
 $('btnLast').addEventListener('click',function(){resumeLatest(true)})
 // 手动重新读取当前目录所在的树
 function refreshCurrent(){
   if(!CUR)return
   if(AB){
     window.__refreshPath=CUR.path
+    window.__forceRefresh=true
     beginLoad();$('bartext').textContent='正在重新读取…'
     AB.reloadTree()
   }else if(window.dirHandle){
@@ -1167,13 +1693,55 @@ $('btnRefresh').addEventListener('click',refreshCurrent)
 // ============ 搜索：检索当前整棵树，空格分隔关键词需全部命中 ============
 var searchBar=$('searchBar'),searchInput=$('searchInput'),searchResults=$('searchResults')
 var searchRecursive=true
+// 搜索类别：null 表示全选；否则为启用类别集合（dir/img/video/mht/txt）
+var searchKinds=null
+// 上次搜索的内存记忆：{q,deep,kinds}，仅本次使用期间保留
+var lastSearch=null
 $('searchScope').addEventListener('click',function(){
   searchRecursive=!searchRecursive
   this.classList.toggle('on',searchRecursive)
-  this.textContent=searchRecursive?'含子目录':'仅当前层'
+  this.title=searchRecursive?'含子目录':'仅当前层'
   runSearch(searchInput.value)
 })
+function syncSearchFilterChips(){
+  var ks=searchKinds||{dir:1,img:1,video:1,mht:1,txt:1}
+  Array.prototype.forEach.call(document.querySelectorAll('#sfilterChips .fchip'),function(b){
+    b.classList.toggle('on',!!ks[b.getAttribute('data-k')])
+  })
+}
+$('searchFilter').addEventListener('click',function(){
+  syncSearchFilterChips();$('sfilterMask').classList.add('on')
+})
+Array.prototype.forEach.call(document.querySelectorAll('#sfilterChips .fchip'),function(b){
+  b.addEventListener('click',function(){
+    var k=b.getAttribute('data-k'),cur=searchKinds||{dir:1,img:1,video:1,mht:1,txt:1}
+    if(cur[k])delete cur[k];else cur[k]=1
+    var keys=Object.keys(cur)
+    searchKinds=keys.length>=5?null:cur
+    syncSearchFilterChips()
+    $('searchFilter').classList.toggle('on',!!searchKinds)
+    runSearch(searchInput.value)
+  })
+})
+$('sfilterDone').addEventListener('click',function(){$('sfilterMask').classList.remove('on')})
+$('sfilterMask').addEventListener('click',function(e){if(e.target===this)$('sfilterMask').classList.remove('on')})
+function searchTypeOf(node,isDir){
+  if(isDir)return'dir'
+  if(isImgName(node.name))return'img'
+  if(isVideoName(node.name))return'video'
+  if(isMhtName(node.name))return'mht'
+  if(isTxtName(node.name))return'txt'
+  return'other'
+}
 function openSearch(){
+  // 不做其它操作时恢复上一次搜索（关键词、范围、类别），并用当前树重算结果
+  if(lastSearch&&!searchInput.value){
+    searchInput.value=lastSearch.q
+    searchRecursive=lastSearch.deep
+    searchKinds=lastSearch.kinds
+    $('searchScope').classList.toggle('on',searchRecursive)
+    $('searchFilter').classList.toggle('on',!!searchKinds)
+  }
   searchBar.classList.add('on');searchResults.classList.add('on')
   setTimeout(function(){searchInput.focus()},50)
   runSearch(searchInput.value)
@@ -1181,6 +1749,7 @@ function openSearch(){
 function closeSearch(){
   searchBar.classList.remove('on');searchResults.classList.remove('on')
   searchInput.value='';searchResults.innerHTML=''
+  if(searchThumbObserver)searchThumbObserver.disconnect()
 }
 $('btnSearch').addEventListener('click',openSearch)
 $('searchClose').addEventListener('click',closeSearch)
@@ -1191,25 +1760,50 @@ function matchAll(name,kws){
   for(var i=0;i<kws.length;i++){if(n.indexOf(kws[i])<0)return false}
   return true
 }
+// 搜索结果缩略图懒加载：最多 300 行，仅可见行取图；图片/视频复用 itemUrl/videoPoster 缓存
+var searchThumbObserver=('IntersectionObserver' in window)?new IntersectionObserver(function(es){
+  es.forEach(function(en){
+    var icon=en.target
+    if(!en.isIntersecting||icon._sloaded)return
+    icon._sloaded=true
+    searchThumbObserver.unobserve(icon)
+    var item=icon._sitem,img=icon.querySelector('img')
+    if(!item||!img)return
+    var apply=function(src){if(icon.isConnected)img.src=src}
+    if(isVideoName(item.name)){
+      if(!AB)return
+      videoPoster(item).then(apply).catch(function(){})
+    }else{
+      itemUrl(item).then(function(u){apply(u)}).catch(function(){})
+    }
+  })
+},{rootMargin:'300px 0px'}):null
 function runSearch(q){
   if(!ROOT)return
+  if(searchThumbObserver)searchThumbObserver.disconnect()
   var kws=(q||'').toLowerCase().split(/\s+/).filter(Boolean)
   searchResults.innerHTML=''
   if(!kws.length){
     var hint=document.createElement('div');hint.id='searchEmpty';hint.textContent='输入关键词检索文件夹和文件'
     searchResults.appendChild(hint);return
   }
+  lastSearch={q:q,deep:searchRecursive,kinds:searchKinds}
   var hits=[]
-  // 起点：含子目录时搜整棵树，仅当前层时搜当前目录 CUR
+  // 起点：含子目录时搜整棵树，仅当前层时搜当前目录 CUR；类别过滤同网格规则
   var startNode=CUR||ROOT
+  function kindOn(t){return !searchKinds||!!searchKinds[t]}
   function scanDir(node,deep){
-    node.dirs.forEach(function(d){
-      if(matchAll(d.name,kws))hits.push({type:'dir',node:d})
-      if(deep)scanDir(d,true)
-    })
+    if(kindOn('dir')){
+      node.dirs.forEach(function(d){
+        if(matchAll(d.name,kws))hits.push({type:'dir',node:d})
+      })
+    }
     node.files.forEach(function(f){
-      if(matchAll(f.name,kws))hits.push({type:'file',node:f,parent:node})
+      var t=searchTypeOf(f,false)
+      // 无"其他"类别芯片：选了任一类别时其他文件排除，全不选（全部）时才显示
+      if(kindOn(t)&&matchAll(f.name,kws))hits.push({type:'file',node:f,parent:node})
     })
+    if(deep)node.dirs.forEach(function(d){scanDir(d,true)})
   }
   scanDir(startNode,searchRecursive)
   if(!hits.length){
@@ -1219,11 +1813,23 @@ function runSearch(q){
   hits.slice(0,300).forEach(function(h){
     var row=document.createElement('div');row.className='sres'
     var icon=document.createElement('div');icon.className='sicon'
-    icon.innerHTML=h.type==='dir'
-      ? '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#9a9a9a" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>'
-      : (isVideoName(h.node.name)
-        ? '<svg viewBox="0 0 24 24" width="22" height="22" fill="#9a9a9a"><path d="M8 5v14l11-7z"/></svg>'
-        : '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#9a9a9a" stroke-width="1.6"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/></svg>')
+    // 图标与网格卡片同规则：文件夹灰、图片留空待懒加载缩略图、视频 App 抓帧/web 三角、MHT 绿地球、TXT 蓝文档、其他灰文件
+    if(h.type==='dir'){
+      icon.classList.add('ic-folder');icon.innerHTML=ICO_FOLDER
+    }else if(isImgName(h.node.name)){
+      icon.innerHTML='<img alt="">'
+      icon._sitem=h.node
+    }else if(isVideoName(h.node.name)){
+      icon.classList.add('ic-video')
+      if(AB){icon.innerHTML='<img alt="">'+ICO_VIDEO;icon._sitem=h.node}
+      else icon.innerHTML=ICO_VIDEO
+    }else if(isMhtName(h.node.name)){
+      icon.classList.add('ic-web');icon.innerHTML=ICO_WEB
+    }else if(isTxtName(h.node.name)){
+      icon.classList.add('ic-txt');icon.innerHTML=ICO_TXT
+    }else{
+      icon.innerHTML=ICO_FILE
+    }
     var tx=document.createElement('div');tx.className='sname'
     var nm=document.createElement('div');nm.textContent=h.node.name
     var sp=document.createElement('span');sp.className='spath'
@@ -1256,6 +1862,7 @@ function runSearch(q){
       }
     })
     searchResults.appendChild(row)
+    if(icon._sitem&&searchThumbObserver)searchThumbObserver.observe(icon)
   })
   if(hits.length>300){
     var more=document.createElement('div');more.id='searchEmpty';more.textContent='结果较多，仅显示前 300 项'
@@ -1269,7 +1876,7 @@ $('dirInput').addEventListener('change',function(){
   var rn=buildFromInput(this.files)
   if(rn)ROOT.name=rn
   ROOT._uri='fs:'+ROOT.name
-  shufflePath=null;shuffleDirs=null;shuffleFiles=null
+  shufflePath=null;shuffleDirs=null;shuffleFiles=null;filterPath=null;filterKinds=null
   sortNode(ROOT);finishNode(ROOT)
   var target=resolveTreeTarget()
   $('welcome').classList.add('hidden')
@@ -1287,10 +1894,11 @@ function resumeLatest(toLast){
       if(toLast){
         var saved=localStorage.getItem('ld:'+ROOT.name)
         if(saved&&PATHMAP[saved])node=PATHMAP[saved]
+        else if(saved){localStorage.removeItem('ld:'+ROOT.name);window.__lastMissing=true}
       }
       $('welcome').classList.add('hidden')
       history.replaceState({t:'folder',path:node.path},'')
-      enterFolder(node,false);syncBack()
+      enterFolder(node,false);syncBack();notifyLastMissing()
       return
     }
     window.__wantLast=!!toLast
@@ -1301,7 +1909,13 @@ function resumeLatest(toLast){
   idbGet('dirHandle').then(function(h){
     if(!h)return
     window.__wantLast=!!toLast
-    verifyPerm(h).then(function(ok){if(ok)loadFromHandle(h);else toast('未授予权限，请重新选择')})
+    verifyPerm(h).then(function(ok){
+      if(ok)loadFromHandle(h)
+      else{markRecDead('fs:'+h.name);renderRecords();toast('未授予权限，已标记为失效')}
+    }).catch(function(){
+      markRecDead('fs:'+h.name);renderRecords()
+      toast('该文件夹记录已失效，请删除后重新选择')
+    })
   })
 }
 if(AB){
@@ -1309,8 +1923,10 @@ if(AB){
   $('wCredit').textContent='by LCTech'
   renderRecords()
   if(AB.hasSavedTree()){
-    // 启动默认只进根目录，不自动跳子目录
-    beginLoad();$('bartext').textContent='正在读取目录…';AB.loadSaved()
+    // 最近记录已失效（文件夹被删或授权丢失）则不自动进入，留在主页显示红色失效项
+    var u0=AB.latestUri()
+    if(deadRecList().indexOf(u0)>=0||AB.uriAlive(u0)===false)syncBack()
+    else{beginLoad();$('bartext').textContent='正在读取目录…';AB.loadSaved()}
   }else{
     syncBack()
   }
@@ -1354,8 +1970,22 @@ var coverObserver = ('IntersectionObserver' in window) ? new IntersectionObserve
   })
 },{rootMargin:COVER_LOAD+'px 0px'}) : null
 // 视频首帧封面：App 走原生 MediaMetadataRetriever（与网页解码器解耦，4K 也可能抓到）；
-// 浏览器走离屏 video+canvas。dataURL 缓存，逐个处理避免抢解码器
-var posterCache=new Map(),vtQueue=[],vtActive=0,thumbTokens={},thumbTokenSeq=0
+// 浏览器走离屏 video+canvas。dataURL 缓存按文件夹两级保留（当前+上一个），逐个处理避免抢解码器
+var posterCache=new Map()
+var posterDirs=[]
+function posterTouchDir(path){
+  var i=posterDirs.indexOf(path)
+  if(i>=0)posterDirs.splice(i,1)
+  posterDirs.unshift(path)
+  while(posterDirs.length>2){
+    var old=posterDirs.pop()
+    var pre=old?'|'+old+'/':null
+    Array.prototype.forEach.call(posterCache.keys(),function(k){
+      if(!pre||k.indexOf(pre)>0)posterCache.delete(k)
+    })
+  }
+}
+var vtQueue=[],vtActive=0,thumbTokens={},thumbTokenSeq=0
 window.__onThumb=function(token,data){
   var j=thumbTokens[token]
   if(!j)return
@@ -1375,7 +2005,12 @@ function pumpVT(){
       if(v){try{v.removeAttribute('src');v.pause();v.load()}catch(ex){}if(v.parentNode)v.parentNode.removeChild(v)}
       clearTimeout(to)
       vtActive=Math.max(0,vtActive-1)
-      if(ok){posterCache.set(job.item.path,data);job.res(data)}
+      if(ok){
+        var p0=job.item.path,slash=p0.lastIndexOf('/')
+        posterTouchDir(slash>0?p0.slice(0,slash):'')
+        posterCache.set(p0,data)
+      }
+      if(ok)job.res(data)
       else job.rej(new Error('poster'))
       pumpVT()
     }
@@ -1552,7 +2187,48 @@ function toggleShuffle(){
   }
   renderGrid(CUR)
 }
-$('btnShuffle').addEventListener('click',toggleShuffle)
+$('fabShuffle').addEventListener('click',toggleShuffle)
+// 类别过滤：只作用于当前目录，切到其他目录自动视为关闭；集合为空表示显示全部
+var filterPath=null,filterKinds=null
+var FILT_DEFS=[['dir','文件夹'],['img','图片'],['video','视频'],['mht','离线网页'],['txt','文本文档']]
+function isFiltered(node){return !!node&&filterPath===node.path&&!!filterKinds}
+function filterMatch(f,k){
+  return (!!k.img&&isImgName(f.name))||(!!k.video&&isVideoName(f.name))
+    ||(!!k.mht&&isMhtName(f.name))||(!!k.txt&&isTxtName(f.name))
+}
+var filterDraft={}
+function syncFilterChips(){
+  FILT_DEFS.forEach(function(d){
+    var b=document.querySelector('#filterChips .fchip[data-k="'+d[0]+'"]')
+    if(b)b.classList.toggle('on',!!filterDraft[d[0]])
+  })
+}
+function applyFilterDraft(){
+  var keys=FILT_DEFS.map(function(d){return d[0]}).filter(function(k){return filterDraft[k]})
+  if(!keys.length){filterPath=null;filterKinds=null}
+  else{
+    filterPath=CUR.path;filterKinds={}
+    keys.forEach(function(k){filterKinds[k]=1})
+  }
+  renderGrid(CUR)
+}
+$('btnFilter').addEventListener('click',function(){
+  if(!CUR)return
+  filterDraft={}
+  if(isFiltered(CUR)){for(var k in filterKinds)filterDraft[k]=1}
+  syncFilterChips()
+  $('filterMask').classList.add('on');syncBack()
+})
+Array.prototype.forEach.call(document.querySelectorAll('#filterChips .fchip'),function(b){
+  b.addEventListener('click',function(){
+    var k=b.getAttribute('data-k')
+    if(filterDraft[k])delete filterDraft[k];else filterDraft[k]=1
+    syncFilterChips()
+    applyFilterDraft()
+  })
+})
+$('filterDone').addEventListener('click',function(){$('filterMask').classList.remove('on');syncBack()})
+$('filterMask').addEventListener('click',function(e){if(e.target===this){$('filterMask').classList.remove('on');syncBack()}})
 function renderGrid(node,focusPath){
   gridToken++
   var myToken=gridToken
@@ -1560,10 +2236,15 @@ function renderGrid(node,focusPath){
   if(coverObserver)coverObserver.disconnect()
   var g=$('grid');g.innerHTML='';g.scrollTop=0
   $('fabTop').classList.add('hidden')
-  $('btnShuffle').classList.toggle('on',isShuffled(node))
+  $('fabShuffle').classList.toggle('on',isShuffled(node))
   var rnd=isShuffled(node)
-  var viewDirs=rnd?shuffleDirs:node.dirs
-  var viewFiles=rnd?shuffleFiles:node.files
+  var fk=isFiltered(node)?filterKinds:null
+  $('btnFilter').classList.toggle('on',!!fk)
+  // 文件夹始终作为第一大类排在文件之前；过滤关闭时全部显示
+  var baseDirs=rnd?shuffleDirs:node.dirs
+  var baseFiles=rnd?shuffleFiles:node.files
+  var viewDirs=fk?(fk.dir?baseDirs:[]):baseDirs
+  var viewFiles=fk?baseFiles.filter(function(x){return filterMatch(x,fk)}):baseFiles
   var cards=[]
   var imgFiles=viewFiles.filter(function(x){return isImgName(x.name)})
   var vidFiles=viewFiles.filter(function(x){return isVideoName(x.name)})
@@ -1635,7 +2316,9 @@ function renderGrid(node,focusPath){
     cards.push(el)
   })
   if(!cards.length){
-    var e=document.createElement('div');e.id='empty';e.textContent='空文件夹';g.appendChild(e)
+    var e=document.createElement('div');e.id='empty'
+    e.textContent=fk?'没有符合过滤条件的内容':'空文件夹'
+    g.appendChild(e)
     return
   }
   var i=0,B=150,focusEl=null
@@ -1679,6 +2362,7 @@ function renderCrumb(node){
 }
 function enterFolder(node,push){
   CUR=node
+  posterTouchDir(node.path)
   $('welcome').classList.add('hidden')
   $('app').classList.remove('hidden')
   renderCrumb(node);renderGrid(node)
@@ -1743,7 +2427,6 @@ var vMode=localStorage.getItem('vMode')||'lr'
 if(vMode!=='lr'&&vMode!=='ud'&&vMode!=='rl')vMode='lr'
 var _vsRaw=localStorage.getItem('vStrip')
 var vStrip=_vsRaw===null?true:_vsRaw==='1'
-var vShowBar=localStorage.getItem('vBar')!=='0'
 var uiOn=false
 var reader=$('reader'),units=[],order=[],ratio=[],built=false
 var readerObserver=null,trackRaf=0,posTimer=0
@@ -2825,6 +3508,7 @@ function closeNovel(push){
   if(AB)AB.setViewer(false)
   syncBack()
   if(push&&history.state&&history.state.t==='nv')history.back()
+  consumePendingTree()
 }
 
 // dir=+1 阅读前进一张，-1 回退一张；rl 模式视觉反向，文件序号步进随之取反
@@ -2880,6 +3564,24 @@ function toggleUI(){
   uiOn=!uiOn
   $('viewer').classList.toggle('ui-off',!uiOn)
 }
+// 屏幕常亮：App 走原生窗口标志，网页走 Screen Wake Lock，退出阅览立即释放，选择自动记忆
+var vWake=localStorage.getItem('vWake')==='1',wakeSentinel=null
+function wakeAcquire(){
+  if(AB){AB.setKeepScreen(true);return}
+  if(!('wakeLock' in navigator))return
+  navigator.wakeLock.request('screen').then(function(s){
+    wakeSentinel=s
+    s.addEventListener('release',function(){wakeSentinel=null})
+  }).catch(function(){})
+}
+function wakeRelease(){
+  if(AB){AB.setKeepScreen(false);return}
+  if(wakeSentinel){try{wakeSentinel.release()}catch(e){}wakeSentinel=null}
+}
+// 网页版切到后台 Wake Lock 会被系统收回，回到前台且仍在阅读时重新申请
+document.addEventListener('visibilitychange',function(){
+  if(vWake&&!AB&&document.visibilityState==='visible'&&$('viewer').classList.contains('on'))wakeAcquire()
+})
 function openViewer(list,index,key){
   vList=list;vIdx=index;vKey=key
   if(readerObserver)readerObserver.disconnect()
@@ -2889,8 +3591,10 @@ function openViewer(list,index,key){
   pvBox.classList.remove('on');clearTimeout(pvTimer);pvImg.removeAttribute('src')
   $('viewer').classList.add('on')
   if(AB){AB.setViewer(true);syncBack()}
-  $('vprog').classList.toggle('hidden',!vShowBar)
-  $('btnBar').classList.toggle('on',vShowBar)
+  // 进度条随菜单一起显隐，菜单打开即显示
+  $('vprog').classList.remove('hidden')
+  $('btnWake').classList.toggle('on',vWake)
+  if(vWake)wakeAcquire()
   uiOn=false;$('viewer').classList.add('ui-off')
   vLand=false;$('btnOrient').classList.remove('land')
   if(AB)AB.setOrient(0)
@@ -2907,6 +3611,7 @@ function openViewer(list,index,key){
 }
 function closeViewer(push){
   $('viewer').classList.remove('on')
+  wakeRelease()
   vLand=false;$('btnOrient').classList.remove('land')
   if(AB){AB.setViewer(false);AB.setOrient(0);syncBack()}
   if(readerObserver)readerObserver.disconnect()
@@ -2914,6 +3619,7 @@ function closeViewer(push){
   reader.innerHTML=''
   urlCache.forEach(function(u){URL.revokeObjectURL(u);allUrls.delete(u)});urlCache.clear()
   if(push&&history.state&&history.state.t==='viewer')history.back()
+  consumePendingTree()
 }
 // ============ 视频播放（系统控件管进度条/暂停，播放速度与长按加速均可滑条调节） ============
 var vp=$('vp'),vpBox=$('vplayer'),vpOn=false
@@ -2961,6 +3667,7 @@ function closeVideo(){
   clearTimeout(gT.timer);vpStopHold();hideSpeedPanel()
   vpBox.classList.remove('on')
   syncBack()
+  consumePendingTree()
 }
 $('vpClose').addEventListener('click',closeVideo)
 // 倍速面板
@@ -3177,12 +3884,13 @@ $('btnStrip').addEventListener('click',function(){
   if(built)buildReader(vIdx)
   toast(vStrip?'条漫连续滚动':'整页翻页')
 })
-$('btnBar').addEventListener('click',function(e){
+$('btnWake').addEventListener('click',function(e){
   e.stopPropagation()
-  vShowBar=!vShowBar
-  localStorage.setItem('vBar',vShowBar?'1':'0')
-  $('vprog').classList.toggle('hidden',!vShowBar)
-  $('btnBar').classList.toggle('on',vShowBar)
+  vWake=!vWake
+  localStorage.setItem('vWake',vWake?'1':'0')
+  $('btnWake').classList.toggle('on',vWake)
+  if(vWake)wakeAcquire();else wakeRelease()
+  toast(vWake?'屏幕常亮已开启':'屏幕常亮已关闭')
 })
 // 键盘
 window.addEventListener('keydown',function(e){
