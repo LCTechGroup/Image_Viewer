@@ -29,7 +29,11 @@ android {
     }
 
     defaultConfig {
-        applicationId 'com.lctechgroup.imgbrowser'
+        // debug/日常构建用 imgbrowser；release 脚本传 -PpkgRelease 时用正式包名 imagebrowser，
+        // 两者包名不同，可在同一台设备并存安装、数据互不干扰
+        applicationId project.hasProperty('pkgRelease')
+                ? 'com.lctechgroup.imagebrowser'
+                : 'com.lctechgroup.imgbrowser'
         minSdk 23
         targetSdk 35
         versionCode 1

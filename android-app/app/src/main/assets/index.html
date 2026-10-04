@@ -67,7 +67,12 @@ img{display:block}
 .fchip{min-width:76px;padding:9px 14px;border-radius:20px;background:#2a2a2a;border:1px solid #3d3d3d;color:#ddd;font-size:13.5px}
 .fchip:active{filter:brightness(.9)}
 .fchip.on{background:#fff;color:#000;border-color:#fff;font-weight:600}
-#filterBox .bigbtn{max-width:none;padding:11px 6px;font-size:14px;border-radius:12px}
+#filterBox .bigbtn{max-width:none;margin:0 auto;padding:11px 6px;font-size:14px;border-radius:12px}
+/* 搜索类别弹窗专用胶囊：默认深底灰字（表示"全部"），点选后白底黑字 */
+#sfilterChips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:16px}
+.sfchip{min-width:84px;padding:10px 16px;border-radius:20px;background:#2a2a2a;border:1px solid #3d3d3d;color:#ddd;font-size:13.5px}
+.sfchip:active{filter:brightness(.9)}
+.sfchip.on{background:#fff;color:#000;border-color:#fff;font-weight:600}
 /* 分类清理缓存弹窗 */
 #clearMask{position:fixed;inset:0;z-index:61;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.62);padding:30px}
 #clearMask.on{display:flex}
@@ -111,12 +116,13 @@ img{display:block}
 #searchInput{flex:1;height:38px;border-radius:19px;background:#232323;border:none;color:#eee;font-size:14px;padding:0 16px;outline:none}
 #searchInput::placeholder{color:#888}
 #searchClose{flex:0 0 auto;width:38px;height:38px;border-radius:50%;background:transparent;color:#ccc;font-size:22px;border:none}
-/* 搜索栏右侧图标键：范围（文件夹树/当前层）与类别过滤，38px 方形，启用白底黑图标 */
-.sbtn{flex:0 0 auto;width:38px;height:38px;border-radius:10px;background:#232323;border:none;display:flex;align-items:center;justify-content:center;padding:0}
-.sbtn:active{background:#333}
-.sbtn svg{width:20px;height:20px;fill:none;stroke:#ddd;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.sbtn.on{background:#fff}
-.sbtn.on svg{stroke:#000}
+/* 搜索栏右侧图标键：范围（文件夹树/当前层）与类别过滤，38px 方形；
+   规则全部限定在 #searchBar 内，避免污染弹窗里的胶囊按钮 */
+#searchBar .sbtn{flex:0 0 auto;width:38px;height:38px;border-radius:10px;background:#232323;border:none;display:flex;align-items:center;justify-content:center;padding:0}
+#searchBar .sbtn:active{background:#333}
+#searchBar .sbtn svg{width:20px;height:20px;fill:none;stroke:#ddd;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#searchBar .sbtn.on{background:#fff}
+#searchBar .sbtn.on svg{stroke:#000}
 /* 范围键：含子目录时显示树状图标，仅当前层时显示单层图标 */
 #searchScope .ss-flat{display:none}
 #searchScope:not(.on) .ss-deep{display:none}
@@ -427,11 +433,11 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
     <div id="filterTitle">搜索类别</div>
     <div id="filterHint">点选参与搜索的类别，可多选；全部不选即搜索全部类型</div>
     <div id="sfilterChips">
-      <button class="fchip on" data-k="dir">文件夹</button>
-      <button class="fchip on" data-k="img">图片</button>
-      <button class="fchip on" data-k="video">视频</button>
-      <button class="fchip on" data-k="mht">离线网页</button>
-      <button class="fchip on" data-k="txt">文本文档</button>
+      <button class="sfchip" data-k="dir">文件夹</button>
+      <button class="sfchip" data-k="img">图片</button>
+      <button class="sfchip" data-k="video">视频</button>
+      <button class="sfchip" data-k="mht">离线网页</button>
+      <button class="sfchip" data-k="txt">文本文档</button>
     </div>
     <button class="bigbtn" id="sfilterDone">完成</button>
   </div>
@@ -643,7 +649,7 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
         <li><kbd>‹</kbd> 返回上一层，在根目录时返回主页</li>
         <li><kbd>↻</kbd> 重新读取当前目录，文件有增删时用来刷新</li>
         <li><kbd>⤨</kbd> 右下角随机键（主页键上方）打乱当前目录内容，再按一次恢复名称排序；进入子文件夹或切换目录会自动恢复</li>
-        <li><kbd>⌕</kbd> 按名称搜索文件和文件夹，空格分隔的多个关键字需全部命中；树状 / 单层图标键切换「含子目录 / 仅当前层」，旁边漏斗键可按文件夹、图片、视频、离线网页、文本文档过滤；再次打开搜索默认复现上次的关键词与条件（本次使用期间）</li>
+        <li><kbd>⌕</kbd> 按名称搜索文件和文件夹，空格分隔的多个关键字需全部命中；树状 / 单层图标键切换「含子目录 / 仅当前层」，旁边漏斗键可按文件夹、图片、视频、离线网页、文本文档过滤；再次打开搜索会直接列出上一次的结果列表（本次使用期间，连同所在根文件夹一起记住，可跨文件夹/根目录直接跳转），输入新词才重新搜索；点文件夹直接进入，点文件跳到其所在目录并高亮该卡片，不自动打开</li>
         <li><kbd>过滤</kbd> 键在搜索与重新读取之间，点开后勾选要显示的类别（文件夹 / 图片 / 视频 / 离线网页 / 文本文档），可多选；全部不选即显示全部内容，启用时过滤键变白；只对当前目录生效，进入其他目录自动恢复</li>
         <li><kbd>⌂</kbd> 右下角主页键返回主页，当前阅读位置会被记住；随机键正上方是回到顶部键，向下滚动后才出现</li>
         <li>图片显示缩略图、视频显示首帧封面（多个视频时依次加载，约 6 秒取不到则显示播放三角）</li>
@@ -927,6 +933,7 @@ function webEnterLoaded(withPf){
     if(fi){window.__pendingFavFile=null;openFavedEntry(pf,target,fi)}
     else if(withPf){window.__pendingFavFile=null;toast('收藏的文件已不存在或已移动')}
   }
+  consumePendingHit()
 }
 function loadFromHandle(handle){
   var gen=beginLoad()
@@ -1067,6 +1074,7 @@ function enterTreeFromData(j){
   }
   clearRecDead(ROOT._uri)
   renderRecords();syncBack()
+  consumePendingHit()
 }
 // 已放弃加载（遮罩关闭）后迟到的树回传直接丢弃，避免半成品树覆盖首页状态
 // 手动刷新走同一回调但带 __forceRefresh 标记，进入后比对签名提示更新结果
@@ -1695,7 +1703,8 @@ var searchBar=$('searchBar'),searchInput=$('searchInput'),searchResults=$('searc
 var searchRecursive=true
 // 搜索类别：null 表示全选；否则为启用类别集合（dir/img/video/mht/txt）
 var searchKinds=null
-// 上次搜索的内存记忆：{q,deep,kinds}，仅本次使用期间保留
+// 上次搜索结果快照（纯数据，含所属根 uri），仅本次使用期间保留；
+// 再次打开搜索时输入框留空，直接原样渲染这份列表，不重新搜索
 var lastSearch=null
 $('searchScope').addEventListener('click',function(){
   searchRecursive=!searchRecursive
@@ -1704,19 +1713,22 @@ $('searchScope').addEventListener('click',function(){
   runSearch(searchInput.value)
 })
 function syncSearchFilterChips(){
-  var ks=searchKinds||{dir:1,img:1,video:1,mht:1,txt:1}
-  Array.prototype.forEach.call(document.querySelectorAll('#sfilterChips .fchip'),function(b){
+  var ks=searchKinds||{}
+  Array.prototype.forEach.call(document.querySelectorAll('#sfilterChips .sfchip'),function(b){
     b.classList.toggle('on',!!ks[b.getAttribute('data-k')])
   })
 }
 $('searchFilter').addEventListener('click',function(){
   syncSearchFilterChips();$('sfilterMask').classList.add('on')
 })
-Array.prototype.forEach.call(document.querySelectorAll('#sfilterChips .fchip'),function(b){
+Array.prototype.forEach.call(document.querySelectorAll('#sfilterChips .sfchip'),function(b){
   b.addEventListener('click',function(){
-    var k=b.getAttribute('data-k'),cur=searchKinds||{dir:1,img:1,video:1,mht:1,txt:1}
+    var k=b.getAttribute('data-k'),cur={}
+    // 从"全部"态（null）第一次点选时其它四类视为关闭，只开启当前类；否则沿用已选
+    if(searchKinds)Object.keys(searchKinds).forEach(function(x){cur[x]=1})
     if(cur[k])delete cur[k];else cur[k]=1
     var keys=Object.keys(cur)
+    // 五类全选等价于不限制，归一回 null（视觉全暗）；全不选也按"全部"处理
     searchKinds=keys.length>=5?null:cur
     syncSearchFilterChips()
     $('searchFilter').classList.toggle('on',!!searchKinds)
@@ -1734,22 +1746,78 @@ function searchTypeOf(node,isDir){
   return'other'
 }
 function openSearch(){
-  // 不做其它操作时恢复上一次搜索（关键词、范围、类别），并用当前树重算结果
-  if(lastSearch&&!searchInput.value){
-    searchInput.value=lastSearch.q
-    searchRecursive=lastSearch.deep
-    searchKinds=lastSearch.kinds
-    $('searchScope').classList.toggle('on',searchRecursive)
-    $('searchFilter').classList.toggle('on',!!searchKinds)
-  }
+  // 输入框始终留空：有快照就原样列出上次结果（含跨根条目），无快照只显示提示
+  searchInput.value=''
   searchBar.classList.add('on');searchResults.classList.add('on')
+  renderSearchSnapshot()
   setTimeout(function(){searchInput.focus()},50)
-  runSearch(searchInput.value)
 }
 function closeSearch(){
   searchBar.classList.remove('on');searchResults.classList.remove('on')
   searchInput.value='';searchResults.innerHTML=''
   if(searchThumbObserver)searchThumbObserver.disconnect()
+}
+// 把实时命中（含 node）转成可缓存的纯数据条目；dir 的 path 为自身路径，文件为所在目录路径
+function hitToData(type,node,parent,rootUri){
+  return{t:type,name:node.name,
+    path:type==='dir'?node.path:(parent?parent.path:''),
+    id:node.id||'',uri:rootUri}
+}
+// 在当前已加载树里按快照定位：文件夹直接进入；文件只跳到所在目录并滚动高亮，不自动打开
+function activateHitHere(d){
+  if(!ROOT||d.uri!==ROOT._uri)return false
+  if(d.t==='dir'){
+    var n=PATHMAP[d.path]
+    if(n){closeSearch();jumpFolderFromSearch(n,null);return true}
+    return false
+  }
+  var par=PATHMAP[d.path]
+  var item=par?par.files.filter(function(x){return x.name===d.name})[0]:null
+  if(!par||!item)return false
+  closeSearch()
+  jumpFolderFromSearch(par,item.path)
+  return true
+}
+// 搜索跳转到文件夹：补压当前位置到目标之间的中间目录，使原生返回键逐级回退
+function jumpFolderFromSearch(target,focusPath){
+  // 起点祖先：当前 CUR 在目标祖先链上就从 CUR 之后补，否则从根开始
+  var ancestor=ROOT
+  var cp=CUR?CUR.path:null
+  if(cp!==null&&(cp===''||(target.path===cp||target.path.indexOf(cp+'/')===0))){
+    ancestor=CUR
+  }
+  var chain=[],x=target
+  while(x&&x!==ancestor){chain.unshift(x);x=x.parent}
+  // 中间层只入历史栈不渲染，最后一层正常进入（含渲染/定位/高亮）
+  for(var i=0;i<chain.length-1;i++){
+    history.pushState({t:'folder',path:chain[i].path},'')
+  }
+  var last=chain[chain.length-1]
+  if(last)enterFolder(last,true,focusPath)
+}
+function activateHit(d){
+  if(activateHitHere(d))return
+  // 跨根：挂上待处理条目，加载目标树完成后由 consumePendingHit 定位
+  window.__pendingHit=d
+  if(AB){
+    beginLoad();$('bartext').textContent='正在打开…';AB.loadRecord(d.uri)
+  }else{
+    idbGet('dirHandles').then(function(arr){
+      arr=Array.isArray(arr)?arr:[]
+      var h=null
+      for(var i=0;i<arr.length;i++)if('fs:'+arr[i].name===d.uri){h=arr[i];break}
+      if(!h){toast('该文件夹的浏览器记录已失效');return}
+      beginLoad();$('bartext').textContent='正在请求授权…'
+      verifyPerm(h).then(function(ok){if(ok)loadFromHandle(h);else{showBar(false);toast('未授予权限，请重新选择')}})
+    })
+  }
+}
+function consumePendingHit(){
+  var d=window.__pendingHit
+  if(!d)return
+  window.__pendingHit=null
+  if(!ROOT||d.uri!==ROOT._uri)return
+  if(!activateHitHere(d))toast('目标已不存在或已移动')
 }
 $('btnSearch').addEventListener('click',openSearch)
 $('searchClose').addEventListener('click',closeSearch)
@@ -1778,96 +1846,101 @@ var searchThumbObserver=('IntersectionObserver' in window)?new IntersectionObser
     }
   })
 },{rootMargin:'300px 0px'}):null
+// 统一行渲染：d 为 {t,name,path,id,uri}，liveNode 为当前树里解析到的文件对象（供缩略图，可空）
+function searchTypeLabel(t){return{t:'类型',dir:'文件夹',img:'图片',video:'视频',mht:'网页',txt:'文本'}[t]||'文件'}
+function buildSearchRow(d,liveNode){
+  var row=document.createElement('div');row.className='sres'
+  var icon=document.createElement('div');icon.className='sicon'
+  var canThumb=!!liveNode
+  if(d.t==='dir'){
+    icon.classList.add('ic-folder');icon.innerHTML=ICO_FOLDER
+  }else if(d.t==='img'){
+    if(canThumb){icon.innerHTML='<img alt="">';icon._sitem=liveNode}
+    else icon.innerHTML=ICO_FILE
+  }else if(d.t==='video'){
+    icon.classList.add('ic-video')
+    if(canThumb&&AB){icon.innerHTML='<img alt="">'+ICO_VIDEO;icon._sitem=liveNode}
+    else icon.innerHTML=ICO_VIDEO
+  }else if(d.t==='mht'){
+    icon.classList.add('ic-web');icon.innerHTML=ICO_WEB
+  }else if(d.t==='txt'){
+    icon.classList.add('ic-txt');icon.innerHTML=ICO_TXT
+  }else{
+    icon.innerHTML=ICO_FILE
+  }
+  var tx=document.createElement('div');tx.className='sname'
+  var nm=document.createElement('div');nm.textContent=d.name
+  var sp=document.createElement('span');sp.className='spath'
+  sp.textContent=searchTypeLabel(d.t)+' · '+d.path
+  tx.appendChild(nm);tx.appendChild(sp)
+  row.appendChild(icon);row.appendChild(tx)
+  row.addEventListener('click',function(){activateHit(d)})
+  return{row:row,icon:icon}
+}
+// 当前树能解析到对应文件对象时才返回（缩略图/取流用）；跨根未加载返回 null
+function resolveHitNode(d){
+  if(!ROOT||d.uri!==ROOT._uri)return null
+  if(d.t==='dir')return null
+  var par=PATHMAP[d.path]
+  return par?par.files.filter(function(x){return x.name===d.name})[0]||null:null
+}
+function renderSearchRows(items){
+  items.slice(0,300).forEach(function(d){
+    var built=buildSearchRow(d,resolveHitNode(d))
+    searchResults.appendChild(built.row)
+    if(built.icon._sitem&&searchThumbObserver)searchThumbObserver.observe(built.icon)
+  })
+  if(items.length>300){
+    var more=document.createElement('div');more.id='searchEmpty';more.textContent='结果较多，仅显示前 300 项'
+    searchResults.appendChild(more)
+  }
+}
+// 打开搜索时原样渲染上次快照
+function renderSearchSnapshot(){
+  if(searchThumbObserver)searchThumbObserver.disconnect()
+  searchResults.innerHTML=''
+  if(lastSearch&&lastSearch.items&&lastSearch.items.length){
+    renderSearchRows(lastSearch.items)
+  }else{
+    var hint=document.createElement('div');hint.id='searchEmpty';hint.textContent='输入关键词检索文件夹和文件'
+    searchResults.appendChild(hint)
+  }
+}
 function runSearch(q){
   if(!ROOT)return
   if(searchThumbObserver)searchThumbObserver.disconnect()
   var kws=(q||'').toLowerCase().split(/\s+/).filter(Boolean)
   searchResults.innerHTML=''
   if(!kws.length){
-    var hint=document.createElement('div');hint.id='searchEmpty';hint.textContent='输入关键词检索文件夹和文件'
-    searchResults.appendChild(hint);return
+    // 输入清空：回到上次结果快照；从未搜过则显示提示
+    renderSearchSnapshot()
+    return
   }
-  lastSearch={q:q,deep:searchRecursive,kinds:searchKinds}
-  var hits=[]
+  var data=[]
+  var rootUri=ROOT._uri
   // 起点：含子目录时搜整棵树，仅当前层时搜当前目录 CUR；类别过滤同网格规则
   var startNode=CUR||ROOT
   function kindOn(t){return !searchKinds||!!searchKinds[t]}
   function scanDir(node,deep){
     if(kindOn('dir')){
-      node.dirs.forEach(function(d){
-        if(matchAll(d.name,kws))hits.push({type:'dir',node:d})
+      node.dirs.forEach(function(d2){
+        if(matchAll(d2.name,kws))data.push(hitToData('dir',d2,node,rootUri))
       })
     }
     node.files.forEach(function(f){
       var t=searchTypeOf(f,false)
-      // 无"其他"类别芯片：选了任一类别时其他文件排除，全不选（全部）时才显示
-      if(kindOn(t)&&matchAll(f.name,kws))hits.push({type:'file',node:f,parent:node})
+      if(t!=='other'&&kindOn(t)&&matchAll(f.name,kws))data.push(hitToData(t,f,node,rootUri))
     })
-    if(deep)node.dirs.forEach(function(d){scanDir(d,true)})
+    if(deep)node.dirs.forEach(function(d2){scanDir(d2,true)})
   }
   scanDir(startNode,searchRecursive)
-  if(!hits.length){
+  // 整份结果列表连同所属根一起缓存，下次打开搜索原样显示
+  lastSearch={items:data}
+  if(!data.length){
     var e2=document.createElement('div');e2.id='searchEmpty';e2.textContent='没有匹配结果'
     searchResults.appendChild(e2);return
   }
-  hits.slice(0,300).forEach(function(h){
-    var row=document.createElement('div');row.className='sres'
-    var icon=document.createElement('div');icon.className='sicon'
-    // 图标与网格卡片同规则：文件夹灰、图片留空待懒加载缩略图、视频 App 抓帧/web 三角、MHT 绿地球、TXT 蓝文档、其他灰文件
-    if(h.type==='dir'){
-      icon.classList.add('ic-folder');icon.innerHTML=ICO_FOLDER
-    }else if(isImgName(h.node.name)){
-      icon.innerHTML='<img alt="">'
-      icon._sitem=h.node
-    }else if(isVideoName(h.node.name)){
-      icon.classList.add('ic-video')
-      if(AB){icon.innerHTML='<img alt="">'+ICO_VIDEO;icon._sitem=h.node}
-      else icon.innerHTML=ICO_VIDEO
-    }else if(isMhtName(h.node.name)){
-      icon.classList.add('ic-web');icon.innerHTML=ICO_WEB
-    }else if(isTxtName(h.node.name)){
-      icon.classList.add('ic-txt');icon.innerHTML=ICO_TXT
-    }else{
-      icon.innerHTML=ICO_FILE
-    }
-    var tx=document.createElement('div');tx.className='sname'
-    var nm=document.createElement('div');nm.textContent=h.node.name
-    var sp=document.createElement('span');sp.className='spath'
-    sp.textContent=h.type==='dir'?('文件夹 · '+(h.node.path||'')):('文件 · '+(h.parent?h.parent.path:''))
-    tx.appendChild(nm);tx.appendChild(sp)
-    row.appendChild(icon);row.appendChild(tx)
-    row.addEventListener('click',function(){
-      closeSearch()
-      if(h.type==='dir'){enterFolder(h.node,true)}
-      else{
-        // 文件：进入所在目录并打开
-        var list=(isShuffled(h.parent)?shuffleFiles:h.parent.files).filter(function(x){return isImgName(x.name)})
-        if(isImgName(h.node.name)){
-          enterFolder(h.parent,false)
-          openViewer((isShuffled(h.parent)?shuffleFiles:h.parent.files).filter(function(x){return isImgName(x.name)}),
-            list.indexOf(h.node),h.parent.path+'#files')
-        }else if(isVideoName(h.node.name)){
-          enterFolder(h.parent,false)
-          var vids=(isShuffled(h.parent)?shuffleFiles:h.parent.files).filter(function(x){return isVideoName(x.name)})
-          openVideo(h.node,vids,vids.indexOf(h.node))
-        }else if(isMhtName(h.node.name)){
-          if(AB){
-            enterFolder(h.parent,false)
-            AB.openMht(h.node.id||'',h.node.name||'')
-          }else toast('网页归档仅在安卓 App 内支持浏览')
-        }else if(isTxtName(h.node.name)){
-          enterFolder(h.parent,false)
-          openNovel(h.node)
-        }else if(AB){toast('不支持打开该文件')}
-      }
-    })
-    searchResults.appendChild(row)
-    if(icon._sitem&&searchThumbObserver)searchThumbObserver.observe(icon)
-  })
-  if(hits.length>300){
-    var more=document.createElement('div');more.id='searchEmpty';more.textContent='结果较多，仅显示前 300 项'
-    searchResults.appendChild(more)
-  }
+  renderSearchRows(data)
 }
 $('dirInput').addEventListener('change',function(){
   if(!this.files||!this.files.length)return
@@ -2360,12 +2433,12 @@ function renderCrumb(node){
   $('btnUp').style.visibility='visible'
   $('btnUp').title=node.parent?'上级':'返回'
 }
-function enterFolder(node,push){
+function enterFolder(node,push,focusPath){
   CUR=node
   posterTouchDir(node.path)
   $('welcome').classList.add('hidden')
   $('app').classList.remove('hidden')
-  renderCrumb(node);renderGrid(node)
+  renderCrumb(node);renderGrid(node,focusPath)
   // 记住该文件夹上次浏览的子目录，下次可恢复；两版均记录（App 启动自动恢复，网页点「上次浏览」恢复）
   if(ROOT&&node!==ROOT)localStorage.setItem('ld:'+ROOT.name,node.path)
   if(push)history.pushState({t:'folder',path:node.path},'')
