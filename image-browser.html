@@ -58,6 +58,10 @@ img{display:block}
 #fabSwitch{position:fixed;right:16px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:30;width:52px;height:52px;border-radius:50%;background:#fff;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.5)}
 #fabSwitch:active{background:#ccc}
 #fabSwitch svg{width:24px;height:24px;fill:none;stroke:#000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* 回到顶部：位于主页键正上方，滚动离开顶部才出现 */
+#fabTop{position:fixed;right:16px;bottom:calc(88px + env(safe-area-inset-bottom));z-index:30;width:46px;height:46px;border-radius:50%;background:rgba(35,35,35,.9);border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.5);transition:opacity .18s,transform .18s}
+#fabTop:active{background:rgba(60,60,60,.95)}
+#fabTop svg{width:22px;height:22px;fill:none;stroke:#eee;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 /* 搜索 */
 #searchBar{position:fixed;top:0;left:0;right:0;z-index:40;display:none;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 10px 10px;background:#141414;border-bottom:1px solid #2a2a2a}
 #searchBar.on{display:flex}
@@ -108,6 +112,9 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
 .dim{opacity:.45}
 .card.resume{outline:2px solid #fff;background:#232323}
 .card.resume:active{outline-color:#ccc}
+/* 退出阅览器返回网格时，刚浏览文件的短暂高亮 */
+.card.grid-focus{outline:2px solid #fff;animation:gfFade 1.2s ease-out forwards}
+@keyframes gfFade{0%{outline-color:#fff}100%{outline-color:rgba(255,255,255,0)}}
 .resume-thumb{position:absolute;inset:0;background:#232323;display:flex;align-items:center;justify-content:center}
 .resume-thumb svg{position:static;transform:none;width:40px;height:40px;fill:#fff;stroke:none}
 .resume-sub{position:absolute;left:0;right:0;top:calc(50% + 14px);z-index:2;text-align:center;font-size:11px;color:#bbb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px}
@@ -339,6 +346,9 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
     </button>
   </header>
 
+  <button id="fabTop" title="回到顶部" class="hidden">
+    <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+  </button>
   <button id="fabSwitch" title="返回主页">
     <svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5.5 9.5V20h13V9.5M9.5 20v-6h5v6"/></svg>
   </button>
@@ -579,6 +589,19 @@ var MHT_EXT = ['mht','mhtml']
 var TXT_EXT = ['txt']
 var collator = new Intl.Collator('zh-Hans-CN',{numeric:true,sensitivity:'base'})
 function nameCmp(a,b){return collator.compare(a.name,b.name)}
+// 文件大类：图片(0)、视频(1)、网页归档mht(2)、文本(3)、其他(4)；同类内再按名称排
+function fileClass(n){
+  var nm=n.name
+  if(isImgName(nm))return 0
+  if(isVideoName(nm))return 1
+  if(isMhtName(nm))return 2
+  if(isTxtName(nm))return 3
+  return 4
+}
+function fileCmp(a,b){
+  var ca=fileClass(a),cb=fileClass(b)
+  return ca!==cb?ca-cb:collator.compare(a.name,b.name)
+}
 function extOf(n){var i=n.lastIndexOf('.');return i<0?'':n.slice(i+1).toLowerCase()}
 function isImgName(n){return IMG_EXT.indexOf(extOf(n))>=0}
 function isVideoName(n){return VIDEO_EXT.indexOf(extOf(n))>=0}
@@ -627,7 +650,7 @@ var ROOT=null, CUR=null, PATHMAP={}
 var allUrls=new Set()
 function makeNode(name,parent){var n={name:name,path:parent?parent.path+'/'+name:'',parent:parent,dirs:[],files:[],allImages:false};PATHMAP[n.path]=n;return n}
 function itemGetFile(it){return it.handle?it.handle.getFile():Promise.resolve(it.file)}
-function sortNode(n){n.dirs.sort(nameCmp);n.files.sort(nameCmp);for(var i=0;i<n.dirs.length;i++)sortNode(n.dirs[i])}
+function sortNode(n){n.dirs.sort(nameCmp);n.files.sort(fileCmp);for(var i=0;i<n.dirs.length;i++)sortNode(n.dirs[i])}
 function finishNode(n){
   var imgCount=0
   for(var i=0;i<n.files.length;i++){if(isImgName(n.files[i].name))imgCount++}
@@ -1109,6 +1132,16 @@ function verifyPerm(h){
 }
 $('btnPick').addEventListener('click',pickDir)
 $('fabSwitch').addEventListener('click',showHome)
+// 回到顶部：网格滚动离开顶部时显示，点击平滑回到顶部
+var fabTopRaf=0
+function syncFabTop(){
+  fabTopRaf=0
+  $('fabTop').classList.toggle('hidden',$('grid').scrollTop<=4)
+}
+$('grid').addEventListener('scroll',function(){
+  if(!fabTopRaf)fabTopRaf=requestAnimationFrame(syncFabTop)
+},{passive:true})
+$('fabTop').addEventListener('click',function(){$('grid').scrollTo({top:0,behavior:'smooth'})})
 Array.prototype.forEach.call(document.querySelectorAll('#recTabs .rtab'),function(b){
   b.addEventListener('click',function(){recTab=b.getAttribute('data-t');renderRecords()})
 })
@@ -1520,12 +1553,13 @@ function toggleShuffle(){
   renderGrid(CUR)
 }
 $('btnShuffle').addEventListener('click',toggleShuffle)
-function renderGrid(node){
+function renderGrid(node,focusPath){
   gridToken++
   var myToken=gridToken
   coverUrls.forEach(function(u){URL.revokeObjectURL(u);allUrls.delete(u)});coverUrls.clear()
   if(coverObserver)coverObserver.disconnect()
   var g=$('grid');g.innerHTML='';g.scrollTop=0
+  $('fabTop').classList.add('hidden')
   $('btnShuffle').classList.toggle('on',isShuffled(node))
   var rnd=isShuffled(node)
   var viewDirs=rnd?shuffleDirs:node.dirs
@@ -1568,6 +1602,7 @@ function renderGrid(node){
   viewFiles.forEach(function(f){
     var wrap=document.createElement('div');wrap.innerHTML=fileCardHTML(f)
     var el=wrap.firstChild
+    el._fpath=f.path
     var isImg=isImgName(f.name)
     var isVid=isVideoName(f.name)
     var isMht=isMhtName(f.name)
@@ -1603,7 +1638,7 @@ function renderGrid(node){
     var e=document.createElement('div');e.id='empty';e.textContent='空文件夹';g.appendChild(e)
     return
   }
-  var i=0,B=150
+  var i=0,B=150,focusEl=null
   ;(function flush(){
     if(myToken!==gridToken)return
     var slice=cards.slice(i,i+B);i+=B
@@ -1611,6 +1646,17 @@ function renderGrid(node){
       g.appendChild(el)
       if(coverObserver&&el._item)coverObserver.observe(el)
     })
+    // 退出阅览器返回时定位到刚浏览的文件附近（元素入 DOM 后滚动到视口偏上位置）
+    if(focusPath&&!focusEl){
+      for(var k=0;k<slice.length;k++){
+        if(slice[k]._fpath===focusPath){focusEl=slice[k];break}
+      }
+      if(focusEl){
+        focusEl.scrollIntoView({block:'center'})
+        focusEl.classList.add('grid-focus')
+        setTimeout(function(){if(focusEl&&myToken===gridToken)focusEl.classList.remove('grid-focus')},1200)
+      }
+    }
     if(i<cards.length)requestAnimationFrame(flush)
   })()
 }
@@ -1660,7 +1706,13 @@ window.addEventListener('popstate',function(ev){
   if(st&&st.t==='folder'){
     var n=PATHMAP[st.path]
     if(n){
-      CUR=n;renderCrumb(n);renderGrid(n)
+      // 从图片阅览器返回：定位到退出时正在看的文件卡片附近，而不是回到列表顶部
+      var focusPath=null
+      if($('viewer').classList.contains('on')&&vList&&vList[vIdx]){
+        var vp2=vList[vIdx].path||''
+        if(vp2.indexOf(n.path+'/')===0)focusPath=vp2
+      }
+      CUR=n;renderCrumb(n);renderGrid(n,focusPath)
       $('welcome').classList.add('hidden');$('app').classList.remove('hidden')
       closeViewer(false);syncBack()
     }else if(AB&&ROOT){

@@ -98,8 +98,11 @@ public class VideoActivity extends Activity {
         setContentView(R.layout.activity_video);
 
         prefs = getSharedPreferences("app", MODE_PRIVATE);
-        normalSpeed = clampSpeed(getIntent().getFloatExtra(EX_SPEED, readSpeed("vpSpeed", 1f)));
+        // 正常播放倍速不持久化，每次进入默认 1x（intent 可临时覆盖）；长按倍速持久化
+        normalSpeed = clampSpeed(getIntent().getFloatExtra(EX_SPEED, 1f));
         holdSpeed = clampSpeed(getIntent().getFloatExtra(EX_HOLD, readSpeed("vpHoldSpeed", 2f)));
+        // 循环 / 单次设置持久化
+        loop = prefs.getBoolean("vpLoop", false);
 
         root = findViewById(R.id.vRoot);
         playerView = findViewById(R.id.playerView);
@@ -140,7 +143,7 @@ public class VideoActivity extends Activity {
         playerView.setPlayer(player);
         player.setMediaItem(MediaItem.fromUri(doc));
         player.setPlaybackSpeed(normalSpeed);
-        player.setRepeatMode(REPEAT_MODE_OFF);
+        player.setRepeatMode(loop ? REPEAT_MODE_ONE : REPEAT_MODE_OFF);
         player.prepare();
         player.setPlayWhenReady(true);
         updateLoopBtn();
@@ -171,6 +174,7 @@ public class VideoActivity extends Activity {
             public void onClick(View v) {
                 loop = !loop;
                 player.setRepeatMode(loop ? REPEAT_MODE_ONE : REPEAT_MODE_OFF);
+                prefs.edit().putBoolean("vpLoop", loop).apply();
                 updateLoopBtn();
             }
         });
@@ -318,6 +322,7 @@ public class VideoActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(0, (int) (6 * density), 0, 0);
         sv.addView(box);
+        final View[] curRow = {null};
         panel.addView(sv, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
@@ -371,6 +376,7 @@ public class VideoActivity extends Activity {
                 }
             });
             box.addView(row);
+            if (i == currentIndex) curRow[0] = row;
             loadListThumb(thumb, listIds[i]);
         }
 
@@ -383,6 +389,17 @@ public class VideoActivity extends Activity {
                     ViewGroup.LayoutParams.WRAP_CONTENT);
         }
         dlg.show();
+        // 打开播单即定位到当前播放项，尽量让它出现在列表中部
+        if (curRow[0] != null) {
+            final ScrollView scrollView = sv;
+            curRow[0].post(new Runnable() {
+                @Override
+                public void run() {
+                    int y = curRow[0].getTop() - (scrollView.getHeight() - curRow[0].getHeight()) / 2;
+                    scrollView.scrollTo(0, Math.max(0, y));
+                }
+            });
+        }
     }
 
     // 限高滚动容器：内容少时自适应，内容多时最高不超过屏幕指定比例
@@ -465,9 +482,7 @@ public class VideoActivity extends Activity {
                 updateSpeedBtn();
             }
             public void onStartTrackingTouch(SeekBar sb) {}
-            public void onStopTrackingTouch(SeekBar sb) {
-                prefs.edit().putString("vpSpeed", String.valueOf(normalSpeed)).apply();
-            }
+            public void onStopTrackingTouch(SeekBar sb) {}
         });
         spRange2.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             public void onProgressChanged(SeekBar sb, int p, boolean f) {
