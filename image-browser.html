@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -136,6 +136,8 @@ img{display:block}
 .sres .sicon.ic-folder svg{stroke:#8a8d93}
 .sres .sicon.ic-txt{background:#10161d}
 .sres .sicon.ic-txt svg{stroke:#7fb0e0}
+.sres .sicon.ic-pdf{background:#1c1010}
+.sres .sicon.ic-pdf svg{stroke:#e0807f}
 .sres .sicon.ic-web{background:#0c130f}
 .sres .sicon.ic-web svg{stroke:#7fd3a4}
 .sres .sicon.ic-video svg{fill:#fff;stroke:none;opacity:.95;filter:drop-shadow(0 1px 4px rgba(0,0,0,.9))}
@@ -168,8 +170,11 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
 .badge.vid{background:rgba(255,255,255,.85);color:#000}
 .badge.mht{background:#3ea96e;color:#06140b}
 .badge.txt{background:#4a90d9;color:#04101f}
+.badge.pdf{background:#d9574c;color:#fff}
 .thumb.txticon{background:#10161d;display:flex;align-items:center;justify-content:center}
 .thumb.txticon svg{position:static;width:40px;height:40px;stroke:#7fb0e0}
+.thumb.pdficon{background:#1c1010;display:flex;align-items:center;justify-content:center}
+.thumb.pdficon svg{position:static;width:40px;height:40px;stroke:#e0807f}
 .thumb.webicon{background:#0c130f;display:flex;align-items:center;justify-content:center}
 .thumb.webicon svg{position:static;width:40px;height:40px;stroke:#7fd3a4}
 .cname{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:14px 7px 5px;font-size:12px;color:#d5d8de;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(transparent,rgba(10,10,10,.92) 38%)}
@@ -298,6 +303,9 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
 #nv[data-bg="k"]{background:#000;color:#9b9b9b}
 #nvContent,#nvMeasure,.nvpage{color:inherit}
 #nvTop{position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 10px 26px;background:linear-gradient(rgba(0,0,0,.62),transparent);transition:opacity .2s}
+#nvTop #nvWake svg{fill:none;stroke:#eee}
+#nvTop #nvWake.on{background:#fff}
+#nvTop #nvWake.on svg{stroke:#000}
 #nvName{flex:1;min-width:0;font-size:13px;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #nvBot{position:absolute;bottom:0;left:0;right:0;z-index:5;display:flex;align-items:center;gap:10px;padding:30px 14px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(0,0,0,.66));transition:opacity .2s}
 #nvInfo{flex:1;text-align:center;font-size:12px;color:#ccc;font-variant-numeric:tabular-nums}
@@ -339,6 +347,42 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
 .nvTocVol:first-child{margin-top:0;padding-top:6px}
 .nvTocVol:active{color:#bbb}
 .nvTocEmpty{padding:26px 14px;text-align:center;color:#777;font-size:13px}
+/* ============ PDF 阅读器（pdf.js，仅 App；交互模型与图片阅读器一致：px/py 原生吸附整页，sy 条漫连续） ============ */
+#pdfr{position:fixed;inset:0;z-index:42;background:#000;display:none}
+#pdfr.on{display:block}
+#pdfStage{position:absolute;inset:0}
+#pdfScroll{position:absolute;inset:0;z-index:1;background:#0a0a0a;-webkit-overflow-scrolling:touch}
+/* 横向整页（lr/rl）：定宽页首尾相接，松手吸附整页，翻页完全交给原生滚动，无 JS 位移 */
+#pdfScroll.px{display:flex;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;scroll-snap-type:x mandatory}
+/* 纵向整页（ud 非条漫） */
+#pdfScroll.py{display:block;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;scroll-snap-type:y mandatory}
+/* 纵向条漫：全宽连续无缝不吸附（页间无间距）；容器只留顶部安全区与底部底栏避让 */
+#pdfScroll.sy{display:block;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+#pdfStripWrap{display:block;width:100%}
+.pdfu.x{flex:0 0 auto;width:100vw;height:100%;display:flex;align-items:center;justify-content:center;scroll-snap-align:start;scroll-snap-stop:always;background:#0a0a0a}
+.pdfu.yp{width:100%;height:100%;display:flex;align-items:center;justify-content:center;scroll-snap-align:start;scroll-snap-stop:always;background:#0a0a0a}
+.pdfu.ys{width:100%;height:auto;background:#fff}
+.pdfu canvas{display:block;will-change:transform}
+#pdfLoading{position:absolute;left:0;right:0;top:46%;z-index:4;text-align:center;color:#888;font-size:14px;display:none}
+#pdfTop{position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 10px 26px;background:linear-gradient(rgba(0,0,0,.62),transparent);transition:opacity .2s}
+#pdfName{flex:1;min-width:0;font-size:13px;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pdfBot{position:absolute;bottom:0;left:0;right:0;z-index:5;display:flex;align-items:center;gap:10px;padding:30px 14px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(0,0,0,.66));transition:opacity .2s}
+#pdfInfo{flex:1;text-align:center;font-size:12px;color:#ccc;font-variant-numeric:tabular-nums}
+#pdfr.ui-off #pdfTop,#pdfr.ui-off #pdfBot,#pdfr.ui-off #pdfProg,#pdfr.ui-off #pdfOrient{opacity:0;pointer-events:none}
+#pdfProg{position:absolute;left:12px;right:12px;bottom:calc(60px + env(safe-area-inset-bottom));z-index:6;display:flex;align-items:center;gap:10px;transition:opacity .2s}
+#pdfProg input{flex:1;-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;background:rgba(255,255,255,.3);outline:none}
+#pdfProg input::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:#fff;border:none}
+#pdfProg .pct{font-size:11px;color:#ddd;width:44px;text-align:right;flex:0 0 auto;font-variant-numeric:tabular-nums}
+#pdfBubble{position:absolute;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(6px);z-index:7;background:rgba(20,20,20,.92);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:7px 14px;font-size:12px;color:#eee;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s}
+#pdfBubble.on{opacity:1;transform:translateX(-50%) translateY(0)}
+#pdfOrient{position:absolute;right:10px;top:calc(60px + env(safe-area-inset-top));z-index:10;transition:opacity .2s}
+#pdfOrient.land{background:#fff}
+#pdfOrient svg{fill:#eee;stroke:none}
+#pdfOrient.land svg{fill:#000}
+#pdfTop #pdfWake svg{fill:none;stroke:#eee}
+#pdfTop #pdfWake.on{background:#fff}
+#pdfTop #pdfWake.on svg{stroke:#000}
+#pdfTop #pdfStrip.hidden{display:none}
 /* ============ 使用说明 ============ */
 #wHelp{font-size:12px;color:#8a8a8a;text-decoration:underline}
 #wHelp:active{color:#bbb}
@@ -410,6 +454,7 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
       <button class="fchip" data-k="video">视频</button>
       <button class="fchip" data-k="mht">离线网页</button>
       <button class="fchip" data-k="txt">文本文档</button>
+      <button class="fchip" data-k="pdf">PDF</button>
     </div>
     <button class="bigbtn" id="filterDone">完成</button>
   </div>
@@ -438,6 +483,7 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
       <button class="sfchip" data-k="video">视频</button>
       <button class="sfchip" data-k="mht">离线网页</button>
       <button class="sfchip" data-k="txt">文本文档</button>
+      <button class="sfchip" data-k="pdf">PDF</button>
     </div>
     <button class="bigbtn" id="sfilterDone">完成</button>
   </div>
@@ -517,7 +563,7 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
   </div>
   <button class="vbtn" id="btnOrient" title="横屏">
     <svg class="oi-expand" viewBox="0 0 24 24"><path d="M7,14H5v5h5v-2H7v-3zM5,10h2V7h3V5H5v5zM17,17h-3v2h5v-5h-2v3zM14,5v2h3v3h2V5h-5z"/></svg>
-    <svg class="oi-compress" viewBox="0 0 24 24"><g transform="matrix(0.85 0 0 0.85 1.8 1.8)"><path d="M5,16h3v3h2v-5H5v2zM8,8H5v2h5V5H8v3zM16,19h2v-3h3v-2h-5v5zM16,8V5h-2v5h5V8h-3z"/></g></svg>
+    <svg class="oi-compress" viewBox="0 0 24 24"><path d="M5,16h3v3h2v-5H5v2zM8,8H5v2h5V5H8v3zM14,19h2v-3h3v-2h-5v5zM16,8V5h-2v5h5V8h-3z"/></svg>
   </button>
   <div id="vprog">
     <input type="range" id="progRange" min="0" max="0" value="0">
@@ -577,6 +623,9 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
       <button class="vbtn" id="nvTocBtn" title="目录">
         <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
       </button>
+      <button class="vbtn" id="nvWake" title="屏幕常亮">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+      </button>
       <button class="vbtn" id="nvMode" title="翻页方式">
         <span id="nvModeIco"></span>
       </button>
@@ -619,6 +668,44 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
   </div>
 </div>
 
+<div id="pdfr">
+  <div id="pdfStage">
+    <div id="pdfScroll"></div>
+    <div id="pdfLoading">正在加载 PDF…</div>
+    <div id="pdfTop">
+      <button class="vbtn" id="pdfClose">
+        <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <div id="pdfName"></div>
+      <button class="vbtn hidden" id="pdfStrip" title="条漫连续 / 整页翻页">
+        <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6" rx="1.5"/><rect x="4" y="14" width="16" height="6" rx="1.5"/></svg>
+      </button>
+      <button class="vbtn" id="pdfWake" title="屏幕常亮">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+      </button>
+      <button class="vbtn" id="pdfMode" title="翻页方式"><span id="pdfModeIco">↓</span></button>
+    </div>
+    <button class="vbtn" id="pdfOrient" title="横屏">
+      <svg class="po-expand" viewBox="0 0 24 24"><path d="M7,14H5v5h5v-2H7v-3zM5,10h2V7h3V5H5v5zM17,17h-3v2h5v-5h-2v3zM14,5v2h3v3h2V5h-5z"/></svg>
+      <svg class="po-compress" viewBox="0 0 24 24" style="display:none"><path d="M5,16h3v3h2v-5H5v2zM8,8H5v2h5V5H8v3zM14,19h2v-3h3v-2h-5v5zM16,8V5h-2v5h5V8h-3z"/></svg>
+    </button>
+    <div id="pdfProg">
+      <input type="range" id="pdfRange" min="0" max="1000" value="0">
+      <span class="pct" id="pdfPct">0%</span>
+    </div>
+    <div id="pdfBubble"></div>
+    <div id="pdfBot">
+      <button class="vbtn" id="pdfPrev">
+        <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div id="pdfInfo"></div>
+      <button class="vbtn" id="pdfNext">
+        <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
 <div id="help">
   <div id="helpBar">
     <button class="hbtn" id="helpClose" title="返回">
@@ -627,7 +714,7 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
     <div class="ht">使用说明</div>
   </div>
   <div id="helpBody">
-    <p id="helpIntro">本软件完全离线运行，不联网、不上传文件，支持图片、视频、离线网页和文本文档的本地阅览。</p>
+    <p id="helpIntro">本软件完全离线运行，不联网、不上传文件，支持图片、视频、离线网页、PDF 和文本文档的本地阅览。</p>
 
     <div class="hcard">
       <h3><span class="hno">1</span>主页与文件夹</h3>
@@ -649,8 +736,8 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
         <li><kbd>‹</kbd> 返回上一层，在根目录时返回主页</li>
         <li><kbd>↻</kbd> 重新读取当前目录，文件有增删时用来刷新</li>
         <li><kbd>⤨</kbd> 右下角随机键（主页键上方）打乱当前目录内容，再按一次恢复名称排序；进入子文件夹或切换目录会自动恢复</li>
-        <li><kbd>⌕</kbd> 按名称搜索文件和文件夹，空格分隔的多个关键字需全部命中；树状 / 单层图标键切换「含子目录 / 仅当前层」，旁边漏斗键可按文件夹、图片、视频、离线网页、文本文档过滤；再次打开搜索会直接列出上一次的结果列表（本次使用期间，连同所在根文件夹一起记住，可跨文件夹/根目录直接跳转），输入新词才重新搜索；点文件夹直接进入，点文件跳到其所在目录并高亮该卡片，不自动打开</li>
-        <li><kbd>过滤</kbd> 键在搜索与重新读取之间，点开后勾选要显示的类别（文件夹 / 图片 / 视频 / 离线网页 / 文本文档），可多选；全部不选即显示全部内容，启用时过滤键变白；只对当前目录生效，进入其他目录自动恢复</li>
+        <li><kbd>⌕</kbd> 按名称搜索文件和文件夹，空格分隔的多个关键字需全部命中；树状 / 单层图标键切换「含子目录 / 仅当前层」，旁边漏斗键可按文件夹、图片、视频、离线网页、文本文档、PDF 过滤；再次打开搜索会直接列出上一次的结果列表（本次使用期间，连同所在根文件夹一起记住，可跨文件夹/根目录直接跳转），输入新词才重新搜索；点文件夹直接进入，点文件跳到其所在目录并高亮该卡片，不自动打开</li>
+        <li><kbd>过滤</kbd> 键在搜索与重新读取之间，点开后勾选要显示的类别（文件夹 / 图片 / 视频 / 离线网页 / 文本文档 / PDF），可多选；全部不选即显示全部内容，启用时过滤键变白；只对当前目录生效，进入其他目录自动恢复</li>
         <li><kbd>⌂</kbd> 右下角主页键返回主页，当前阅读位置会被记住；随机键正上方是回到顶部键，向下滚动后才出现</li>
         <li>图片显示缩略图、视频显示首帧封面（多个视频时依次加载，约 6 秒取不到则显示播放三角）</li>
       </ul>
@@ -707,9 +794,19 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
     </div>
 
     <div class="hcard">
-      <h3><span class="hno">7</span>App 版与网页版的区别</h3>
+      <h3><span class="hno">7</span>PDF 文档阅读界面<span class="tag-app">仅 App</span></h3>
       <ul>
-        <li>仅 App 支持：视频播放、离线网页（.mht）浏览及其收藏、横屏锁定、音量键翻页；这些功能在网页版中视频显示为灰色卡片、.mht 无法打开</li>
+        <li>点击 <kbd>.pdf</kbd> 文件进入，内置 pdf.js 离线解析，支持中文与内嵌字体，无需联网</li>
+        <li>默认 <kbd>↓</kbd> 纵向条漫连续滚动（顶栏条漫键可切纵向整页翻页），模式键可切 <kbd>»</kbd> 左右翻页、<kbd>«</kbd> 右左翻页；翻页与图片阅读器同为原生吸附整页，跟手不跳页</li>
+        <li>双指捏合 1–5 倍缩放，双击在 1 倍 / 2 倍间切换；整页模式放大后可单指拖动，翻页自动复位</li>
+        <li>进度条拖动按页跳转并浮出页码；支持横屏锁定与屏幕常亮，阅读位置按文件分别记忆，音量键可翻页；PDF 卡片可长按收藏</li>
+      </ul>
+    </div>
+
+    <div class="hcard">
+      <h3><span class="hno">8</span>App 版与网页版的区别</h3>
+      <ul>
+        <li>仅 App 支持：视频播放、离线网页（.mht）与 PDF 文档浏览及其收藏、横屏锁定、音量键翻页；这些功能在网页版显示为灰色卡片、无法打开</li>
         <li>两版都会记住最近选择的文件夹及上次浏览的子目录，保存在本机：App 授权一次永久免重选、启动即自动恢复；网页版受浏览器安全限制，再次打开时可能需要重新授权一次，且不保留已加载文件的缓存，点「上次浏览」授权后同样能恢复到子目录</li>
         <li>图片阅览、条漫 / 翻页、缩放、文本文档阅读、文件夹与文本文档收藏、主页历史 / 收藏列表、子目录恢复、搜索、随机排序等功能两版一致；网页版打开其他文件夹的收藏或历史记录时会重新请求一次授权</li>
         <li>网页版建议用安卓 Chrome 或 Edge 打开本页面，以支持文件夹记忆；其他浏览器仍可手动选择文件夹浏览</li>
@@ -727,17 +824,19 @@ var IMG_EXT = ['jpg','jpeg','jfif','png','gif','webp','bmp','avif','svg']
 var VIDEO_EXT = ['mp4','m4v','webm','mkv','mov','3gp','ts']
 var MHT_EXT = ['mht','mhtml']
 var TXT_EXT = ['txt']
+var PDF_EXT = ['pdf']
 var collator = new Intl.Collator('zh-Hans-CN',{numeric:true,sensitivity:'base'})
 function nameCmp(a,b){return collator.compare(a.name,b.name)}
-// 文件大类：图片(0)、视频(1)、网页归档mht(2)、文本(3)、其他(4)；同类内再按名称排
+// 文件大类：图片(0)、视频(1)、网页归档mht(2)、文本(3)、PDF(4)、其他(5)；同类内再按名称排
 // 结果缓存在文件对象 _c 上，万级文件排序时每个文件只做一次扩展名判断
 function fileClass(f){
   if(f._c!=null)return f._c
-  var nm=f.name,c=4
+  var nm=f.name,c=5
   if(isImgName(nm))c=0
   else if(isVideoName(nm))c=1
   else if(isMhtName(nm))c=2
   else if(isTxtName(nm))c=3
+  else if(isPdfName(nm))c=4
   f._c=c
   return c
 }
@@ -753,6 +852,7 @@ function isImgName(n){return IMG_EXT.indexOf(extOf(n))>=0}
 function isVideoName(n){return VIDEO_EXT.indexOf(extOf(n))>=0}
 function isMhtName(n){return MHT_EXT.indexOf(extOf(n))>=0}
 function isTxtName(n){return TXT_EXT.indexOf(extOf(n))>=0}
+function isPdfName(n){return PDF_EXT.indexOf(extOf(n))>=0}
 function $(id){return document.getElementById(id)}
 function toast(msg,ms){var t=$('toast');if(!t){t=document.createElement('div');t.id='toast';t.className='toast';document.body.appendChild(t)}t.textContent=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('on')},ms||1600)}
 
@@ -795,6 +895,16 @@ function webRecRemove(name){
 // ============ 目录树数据 ============
 var ROOT=null, CUR=null, PATHMAP={}
 var allUrls=new Set()
+// blob 地址到阅览器缓存路径的反查表：任何一处撤销都必须同步删 urlCache，
+// 否则 itemUrl 仍命中已撤销地址，缩略图/阅览页会拿到死链裂图
+var urlRev=new Map()
+function releaseBlob(u){
+  if(!u||u.slice(0,5)!=='blob:')return
+  try{URL.revokeObjectURL(u)}catch(e){}
+  coverUrls.delete(u);allUrls.delete(u)
+  var p=urlRev.get(u)
+  if(p!=null){urlCache.delete(p);urlRev.delete(u)}
+}
 function makeNode(name,parent){var n={name:name,path:parent?parent.path+'/'+name:'',parent:parent,dirs:[],files:[],allImages:false};PATHMAP[n.path]=n;return n}
 function itemGetFile(it){
   if(it.handle)return it.handle.getFile()
@@ -876,6 +986,8 @@ function endLoadSync(){if(AB)syncBack()}
 // 放弃加载：令牌作废、释放本次 blob 缓存与半成品树，回首页；授权/收藏记录保留
 function cancelLoading(){
   appLoadTok++
+  // App 侧同步作废正在跑的 SAF 扫描，避免取消后线程继续占着扫描池空转
+  if(AB&&AB.cancelScan)AB.cancelScan()
   showBar(false);$('loadCancelMask').classList.remove('on')
   window.__pendingFav=null;window.__pendingFavFile=null;window.__wantLast=false;window.__refreshPath=null
   releaseAll()
@@ -942,7 +1054,7 @@ function loadFromHandle(handle){
   var cacheKey='treeCache:'+handle.name
   return idbGet(cacheKey).then(function(sk){
     if(gen!==appLoadTok)return
-    if(sk&&sk.name===handle.name){
+    if(sk&&validTreeData(sk)&&sk.name===handle.name){
       // 缓存秒进：骨架树无句柄，打开文件时惰性解析；随后后台静默全量重扫
       ROOT=buildTreeFromData(sk)
       webEnterLoaded(false)
@@ -1038,6 +1150,20 @@ function treeSigOfData(j){
   })(j)
   return a.sort().join('~')
 }
+// 树数据结构校验：语法错误或被截断的骨架/回传不得进入建树流程
+function validTreeData(j){
+  if(!j||typeof j.name!=='string'||!j.name)return false
+  if(!Array.isArray(j.dirs)||!Array.isArray(j.files))return false
+  for(var i=0;i<j.dirs.length;i++){
+    var d=j.dirs[i]
+    if(!d||typeof d.path!=='string'||!validTreeData(d))return false
+  }
+  for(var k2=0;k2<j.files.length;k2++){
+    var f2=j.files[k2]
+    if(!f2||typeof f2.name!=='string'||typeof f2.path!=='string')return false
+  }
+  return true
+}
 function buildTreeFromData(j){
   PATHMAP={}
   function build(n,parent){
@@ -1080,6 +1206,7 @@ function enterTreeFromData(j){
 // 手动刷新走同一回调但带 __forceRefresh 标记，进入后比对签名提示更新结果
 function bridgeApplyTree(j){
   if(!appLoading())return
+  if(!validTreeData(j))return
   var force=!!window.__forceRefresh;window.__forceRefresh=false
   var oldSig=ROOT?ROOT._sig:null
   enterTreeFromData(j)
@@ -1088,14 +1215,15 @@ function bridgeApplyTree(j){
 // 缓存秒进：建树进入并立即关 loading，后台全量重扫的结果随后走 __onTreeUpdate
 function bridgeApplyCachedTree(j){
   if(!appLoading())return
+  if(!validTreeData(j))return
   enterTreeFromData(j)
 }
 // 后台静默重扫完成：同树才处理，签名相同零打扰，有变化则热替换
 function bridgeTreeUpdate(j){
-  if(!ROOT||!j||j.uri!==ROOT._uri)return
+  if(!ROOT||!validTreeData(j)||j.uri!==ROOT._uri)return
   var ns=treeSigOfData(j)
   if(ROOT._sig===ns)return
-  if($('viewer').classList.contains('on')||nvOn||vpOn){
+  if($('viewer').classList.contains('on')||nvOn||vpOn||pdfOn){
     window.__pendingTree=buildTreeFromData(j)
     toast('目录已更新，返回列表后生效')
     return
@@ -1153,11 +1281,11 @@ function consumePendingTree(){
 var recTab='rec'
 function favList(){try{return JSON.parse(localStorage.getItem('favs')||'[]')}catch(e){return[]}}
 function saveFavs(a){localStorage.setItem('favs',JSON.stringify(a))}
-function favKindOf(item){return isVideoName(item.name)?'video':(isMhtName(item.name)?'mht':(isTxtName(item.name)?'txt':''))}
+function favKindOf(item){return isVideoName(item.name)?'video':(isMhtName(item.name)?'mht':(isTxtName(item.name)?'txt':(isPdfName(item.name)?'pdf':'')))}
 // 文件夹收藏键保持旧格式 uri||path；文件收藏键加 F| 前缀与类型，避免与同名目录冲突
 function favNodeKey(uri,n){return uri+'||'+n.path}
 function favFileKey(uri,item){return 'F|'+favKindOf(item)+'|'+uri+'||'+item.path}
-function favLabel(f){return f.kind==='video'?'视频':(f.kind==='mht'?'网页':(f.kind==='txt'?'文本':'文件夹'))}
+function favLabel(f){return f.kind==='video'?'视频':(f.kind==='mht'?'网页':(f.kind==='txt'?'文本':(f.kind==='pdf'?'PDF':'文件夹')))}
 function isFavNode(n){
   if(!ROOT||!ROOT._uri||!n)return false
   var k=favNodeKey(ROOT._uri,n)
@@ -1199,7 +1327,7 @@ function toggleFavItem(item,el){
   else{
     var par=item.path.slice(0,item.path.length-item.name.length-1)
     list.unshift({k:k,uri:ROOT._uri,root:ROOT.name,path:par,name:item.name,kind:kind})
-    on=true;toast('已收藏'+(kind==='video'?'视频':(kind==='txt'?'文本':'网页'))+'：'+item.name)
+    on=true;toast('已收藏'+(kind==='video'?'视频':(kind==='txt'?'文本':(kind==='pdf'?'PDF':'网页')))+'：'+item.name)
   }
   saveFavs(list)
   if(el)applyFavStar(el,on)
@@ -1252,6 +1380,9 @@ function openFavedEntry(f,par,item){
     AB.openMht(item.id||'',item.name||'')
   }else if(f.kind==='txt'){
     openNovel(item)
+  }else if(f.kind==='pdf'){
+    if(!AB){toast('PDF 仅在安卓 App 内支持阅读');return}
+    openPdf(item)
   }
 }
 // 打开收藏：当前树里直接进；属于其他根文件夹时 App 自动加载授权树，网页版重新请求一次权限再定位
@@ -1290,8 +1421,8 @@ function openFav(f){
 }
 // 网页版跨根目录打开收藏：按收藏时记录的根名从 IDB 找句柄，浏览器弹一次重新授权后加载并定位
 function webOpenFavHandle(f){
-  if(f.kind==='video'||f.kind==='mht'){
-    toast(f.kind==='video'?'视频仅在安卓 App 内支持播放':'网页归档仅在安卓 App 内浏览')
+  if(f.kind==='video'||f.kind==='mht'||f.kind==='pdf'){
+    toast(f.kind==='video'?'视频仅在安卓 App 内支持播放':(f.kind==='pdf'?'PDF 仅在安卓 App 内支持阅读':'网页归档仅在安卓 App 内浏览'))
     return
   }
   idbGet('dirHandles').then(function(arr){
@@ -1547,10 +1678,10 @@ function clearCacheTree(){
 function clearCacheHist(){
   localStorage.removeItem('vPos')
   Object.keys(localStorage).forEach(function(k){
-    if(k.slice(0,3)==='ld:'||k.slice(0,6)==='nvpos:')localStorage.removeItem(k)
+    if(k.slice(0,3)==='ld:'||k.slice(0,6)==='nvpos:'||k.slice(0,7)==='pdfpos:')localStorage.removeItem(k)
   })
 }
-var READER_CACHE_KEYS=['vMode','vStrip','vWake','vHinted','nvSet','vpSpeed','vpHoldSpeed']
+var READER_CACHE_KEYS=['vMode','vStrip','vWake','vHinted','nvSet','nvWake','vpSpeed','vpHoldSpeed','pdfSet','pdfWake']
 function clearCacheReader(){
   READER_CACHE_KEYS.forEach(function(k){localStorage.removeItem(k)})
   if(AB)AB.clearReaderPrefs()
@@ -1576,11 +1707,11 @@ function syncBack(){
   var homeOn=!$('welcome').classList.contains('hidden')
   var canUp=!!(ROOT&&CUR&&CUR!==ROOT)
   // 加载中也要让原生返回键进入 JS，由 appBack 弹放弃确认；弹窗打开时同样拦截
-  AB.setBackable(nvOn||vOn||vpOn||canUp||appLoading()||(!homeOn&&!!ROOT)||anyModalOpen())
+  AB.setBackable(pdfOn||nvOn||vOn||vpOn||canUp||appLoading()||(!homeOn&&!!ROOT)||anyModalOpen())
 }
 // 返回记录列表页
 function showHome(){
-  closeViewer(false);closeVideo()
+  closeViewer(false);closeVideo();closeNovel(false);closePdf(false)
   $('app').classList.add('hidden')
   $('welcome').classList.remove('hidden')
   renderRecords()
@@ -1609,6 +1740,10 @@ window.appBack=function(){
   if($('help').classList.contains('on')){closeHelp();return}
   if(nvOn){
     if(history.state&&history.state.t==='nv')history.back();else closeNovel(false)
+    return
+  }
+  if(pdfOn){
+    if(history.state&&history.state.t==='pdf')history.back();else closePdf(false)
     return
   }
   if(vpOn){closeVideo();return}
@@ -1728,8 +1863,8 @@ Array.prototype.forEach.call(document.querySelectorAll('#sfilterChips .sfchip'),
     if(searchKinds)Object.keys(searchKinds).forEach(function(x){cur[x]=1})
     if(cur[k])delete cur[k];else cur[k]=1
     var keys=Object.keys(cur)
-    // 五类全选等价于不限制，归一回 null（视觉全暗）；全不选也按"全部"处理
-    searchKinds=keys.length>=5?null:cur
+    // 六类全选等价于不限制，归一回 null（视觉全暗）；全不选也按"全部"处理
+    searchKinds=keys.length>=6?null:cur
     syncSearchFilterChips()
     $('searchFilter').classList.toggle('on',!!searchKinds)
     runSearch(searchInput.value)
@@ -1743,6 +1878,7 @@ function searchTypeOf(node,isDir){
   if(isVideoName(node.name))return'video'
   if(isMhtName(node.name))return'mht'
   if(isTxtName(node.name))return'txt'
+  if(isPdfName(node.name))return'pdf'
   return'other'
 }
 function openSearch(){
@@ -1847,7 +1983,7 @@ var searchThumbObserver=('IntersectionObserver' in window)?new IntersectionObser
   })
 },{rootMargin:'300px 0px'}):null
 // 统一行渲染：d 为 {t,name,path,id,uri}，liveNode 为当前树里解析到的文件对象（供缩略图，可空）
-function searchTypeLabel(t){return{t:'类型',dir:'文件夹',img:'图片',video:'视频',mht:'网页',txt:'文本'}[t]||'文件'}
+function searchTypeLabel(t){return{t:'类型',dir:'文件夹',img:'图片',video:'视频',mht:'网页',txt:'文本',pdf:'PDF'}[t]||'文件'}
 function buildSearchRow(d,liveNode){
   var row=document.createElement('div');row.className='sres'
   var icon=document.createElement('div');icon.className='sicon'
@@ -1865,6 +2001,8 @@ function buildSearchRow(d,liveNode){
     icon.classList.add('ic-web');icon.innerHTML=ICO_WEB
   }else if(d.t==='txt'){
     icon.classList.add('ic-txt');icon.innerHTML=ICO_TXT
+  }else if(d.t==='pdf'){
+    icon.classList.add('ic-pdf');icon.innerHTML=ICO_PDF
   }else{
     icon.innerHTML=ICO_FILE
   }
@@ -2036,8 +2174,8 @@ var coverObserver = ('IntersectionObserver' in window) ? new IntersectionObserve
     if(en.isIntersecting){
       if(!img.src)loadCover(card,img)
     }else if(img.src&&img.complete&&img.naturalWidth>0&&coverDist(en)>COVER_RELEASE){
-      // 只释放已加载完成且滑得足够远的；blob 地址顺手回收
-      if(img._u&&img._u.slice(0,5)==='blob:'){URL.revokeObjectURL(img._u);coverUrls.delete(img._u);allUrls.delete(img._u)}
+      // 只释放已加载完成且滑得足够远的；统一回收同步清阅览器缓存，避免留下死链
+      if(img._u&&img._u.slice(0,5)==='blob:')releaseBlob(img._u)
       img.removeAttribute('src');img._u=null
     }
   })
@@ -2052,9 +2190,11 @@ function posterTouchDir(path){
   posterDirs.unshift(path)
   while(posterDirs.length>2){
     var old=posterDirs.pop()
-    var pre=old?'|'+old+'/':null
+    // 键为文件完整路径（根目录文件形如 /a.mp4），按目录前缀从头匹配；
+    // 根目录 old='' 时只删没有第二段斜杠的根文件，不能清空其他目录的缓存
     Array.prototype.forEach.call(posterCache.keys(),function(k){
-      if(!pre||k.indexOf(pre)>0)posterCache.delete(k)
+      var inOld=old?k.indexOf(old+'/')===0:k.lastIndexOf('/')===0
+      if(inOld)posterCache.delete(k)
     })
   }
 }
@@ -2190,6 +2330,7 @@ var ICO_FOLDER='<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2
 var ICO_FILE='<svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>'
 var ICO_WEB='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.4 2.6 15.6 0 18M12 3c-2.6 2.4-2.6 15.6 0 18"/></svg>'
 var ICO_TXT='<svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M8.5 12.5h7M8.5 16h7"/></svg>'
+var ICO_PDF='<svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>'
 function cardHTML(node,cover){
   var inner,cls
   if(cover){
@@ -2232,6 +2373,15 @@ function fileCardHTML(item){
     return '<div class="card" data-file="'+encodeURIComponent(item.path)+'"><div class="thumb imgicon txticon">'
       +ICO_TXT+'</div><div class="cname">'+escapeHtml(item.name)+'</div><div class="badge txt">TXT</div></div>'
   }
+  if(isPdfName(item.name)){
+    // 网页端同视频：灰色普通文件卡，仅 App 可阅读
+    if(!AB){
+      return '<div class="card" data-file="'+encodeURIComponent(item.path)+'"><div class="thumb imgicon dim">'
+        +ICO_FILE+'</div><div class="cname">'+escapeHtml(item.name)+'</div><div class="badge pdf">PDF</div></div>'
+    }
+    return '<div class="card" data-file="'+encodeURIComponent(item.path)+'"><div class="thumb imgicon pdficon">'
+      +ICO_PDF+'</div><div class="cname">'+escapeHtml(item.name)+'</div><div class="badge pdf">PDF</div></div>'
+  }
   return '<div class="card" data-file="'+encodeURIComponent(item.path)+'"><div class="thumb imgicon dim">'
     +ICO_FILE+'</div><div class="cname">'+escapeHtml(item.name)+'</div></div>'
 }
@@ -2263,11 +2413,12 @@ function toggleShuffle(){
 $('fabShuffle').addEventListener('click',toggleShuffle)
 // 类别过滤：只作用于当前目录，切到其他目录自动视为关闭；集合为空表示显示全部
 var filterPath=null,filterKinds=null
-var FILT_DEFS=[['dir','文件夹'],['img','图片'],['video','视频'],['mht','离线网页'],['txt','文本文档']]
+var FILT_DEFS=[['dir','文件夹'],['img','图片'],['video','视频'],['mht','离线网页'],['txt','文本文档'],['pdf','PDF']]
 function isFiltered(node){return !!node&&filterPath===node.path&&!!filterKinds}
 function filterMatch(f,k){
   return (!!k.img&&isImgName(f.name))||(!!k.video&&isVideoName(f.name))
     ||(!!k.mht&&isMhtName(f.name))||(!!k.txt&&isTxtName(f.name))
+    ||(!!k.pdf&&isPdfName(f.name))
 }
 var filterDraft={}
 function syncFilterChips(){
@@ -2305,7 +2456,7 @@ $('filterMask').addEventListener('click',function(e){if(e.target===this){$('filt
 function renderGrid(node,focusPath){
   gridToken++
   var myToken=gridToken
-  coverUrls.forEach(function(u){URL.revokeObjectURL(u);allUrls.delete(u)});coverUrls.clear()
+  coverUrls.forEach(releaseBlob);coverUrls.clear()
   if(coverObserver)coverObserver.disconnect()
   var g=$('grid');g.innerHTML='';g.scrollTop=0
   $('fabTop').classList.add('hidden')
@@ -2361,8 +2512,9 @@ function renderGrid(node,focusPath){
     var isVid=isVideoName(f.name)
     var isMht=isMhtName(f.name)
     var isTxt=isTxtName(f.name)
-    // 视频/网页归档收藏仅 App；TXT 文本文档两版均可收藏（跨根目录时网页版重新请求授权）
-    var favable=(AB&&(isVid||isMht))||isTxt
+    var isPdf=isPdfName(f.name)
+    // 视频/网页归档/PDF 收藏仅 App；TXT 文本文档两版均可收藏（跨根目录时网页版重新请求授权）
+    var favable=(AB&&(isVid||isMht||isPdf))||isTxt
     if(isImg||(isVid&&AB))el._item=f
     if(favable&&isFavFile(f))applyFavStar(el,true)
     if(favable)bindFavLongPress(el,function(){toggleFavItem(f,el)})
@@ -2376,6 +2528,8 @@ function renderGrid(node,focusPath){
         AB.openMht(f.id||'',f.name||'')
       }else if(isTxtName(f.name)){
         openNovel(f)
+      }else if(isPdf){
+        if(AB)openPdf(f);else toast('PDF 仅在安卓 App 内支持阅读')
       }else{
         if(AB){toast('App 版暂不支持打开此类文件');return}
         Promise.resolve(itemGetFile(f)).then(function(file){
@@ -2454,6 +2608,7 @@ $('btnUp').addEventListener('click',function(){
 window.addEventListener('popstate',function(ev){
   var st=ev.state
   if(nvOn&&!(st&&st.t==='nv')){closeNovel(false)}
+  if(pdfOn&&!(st&&st.t==='pdf')){closePdf(false)}
   if(st&&st.t==='home'){
     $('app').classList.add('hidden')
     $('welcome').classList.remove('hidden')
@@ -2520,7 +2675,7 @@ function itemUrl(item){
   if(urlCache.has(item.path))return Promise.resolve(urlCache.get(item.path))
   return Promise.resolve(itemGetFile(item)).then(function(file){
     var u=URL.createObjectURL(file)
-    urlCache.set(item.path,u);allUrls.add(u)
+    urlCache.set(item.path,u);allUrls.add(u);urlRev.set(u,item.path)
     return u
   })
 }
@@ -3045,9 +3200,11 @@ function nvParasHtml(a,b){
 }
 // ===== 横排虚拟分页：按行切割，段落可跨页续写；DOM 只渲染上/当前/下 3 页 =====
 var nvMeasure=$('nvMeasure'),nvCur=0
-var nvLineH=0,nvPageH=0,nvParH=[]
+var nvLineH=0,nvPageH=0,nvParH=[],nvMarM=0
 // 统一逐段测高：横排/纵排共用。nvUdOff[i]=第 i 段内容偏移，末位为总高；nvParH[i]=段高
-function nvComputeHeights(cb){
+// tok 为本次排版令牌：分片任务每片先校验，作废后立即摘除测量节点，
+// 旧任务不得继续写共享的 nvUdOff/nvParH（否则会污染新一轮排版且泄露游离节点）
+function nvComputeHeights(tok,cb){
   nvUdOff=[0];nvParH=[]
   var node=document.createElement('p')
   var w=nvScroll.clientWidth
@@ -3058,24 +3215,29 @@ function nvComputeHeights(cb){
     // 横排段落左右各 20px margin，测宽时宽度已扣除
     node.style.margin='0 0 .55em 0';node.style.width=(w-40)+'px'
   }
-  node.style.textIndent='2em';node.style.textAlign='justify'
+  // 样式必须与实际渲染的 p 完全一致，长英文的折行行数才会同分页窗口吻合
+  node.style.textIndent='2em';node.style.textAlign='justify';node.style.wordBreak='break-word'
   node.style.visibility='hidden';node.style.position='absolute';node.style.left='-100000px'
   node.style.fontSize=nvSet.fs+'px';node.style.lineHeight=String(nvSet.lh)
   document.body.appendChild(node)
   nvLineH=nvSet.fs*nvSet.lh
+  var mb=parseFloat(getComputedStyle(node).marginBottom)||0
+  nvMarM=mb
   var i=0,acc=0,n=nvParas.length
+  function dropNode(){try{document.body.removeChild(node)}catch(e){}}
   function batch(){
+    if(tok!==nvPageTok||!nvOn){dropNode();return}
     var t0=performance.now()
     while(i<n&&performance.now()-t0<16){
       node.textContent=nvParas[i]
-      var h=node.offsetHeight,m=parseFloat(getComputedStyle(node).marginBottom)||0
+      var h=node.offsetHeight
       nvParH.push(h)
-      acc+=h+m
+      acc+=h+mb
       nvUdOff.push(acc);i++
       if(i%200===0)$('nvLoading').textContent='正在排版… '+Math.round(i/n*100)+'%'
     }
     if(i<n){setTimeout(batch,0);return}
-    document.body.removeChild(node)
+    dropNode()
     if(cb)cb()
   }
   batch()
@@ -3087,7 +3249,7 @@ function nvPaginate(onDone){
   nvMeasure.style.fontSize=nvSet.fs+'px'
   nvMeasure.style.lineHeight=String(nvSet.lh)
   nvMeasure.style.height=nvScroll.clientHeight+'px'
-  nvComputeHeights(function(){
+  nvComputeHeights(tok,function(){
     if(tok!==nvPageTok||!nvOn)return
     if(nvMode==='ud'){
       nvPaging=false
@@ -3130,9 +3292,11 @@ function nvSegHtml(i,skip,show,total,ends){
   var tx=escapeHtml(nvParas[i])
   if(skip===0&&ends)return '<p>'+tx+'</p>'
   var h=Math.round(show*nvLineH),shift=Math.round(skip*nvLineH)
-  var mb=ends?'.55em':'0'
+  // 段末的 .55em 段后距必须计入外层裁切高度：测高偏移里给段间留了这段空，
+  // 外层若只取行高会把 margin 裁掉，渲染节奏与按行分页窗口错位
+  var boxH=h+(ends?nvMarM:0),mb=ends?'.55em':'0'
   // 续写段去掉首行缩进；外层按行高裁切，内层上移跳过已显示行
-  return '<div style="overflow:hidden;height:'+h+'px">'+
+  return '<div style="overflow:hidden;height:'+boxH+'px">'+
     '<p style="margin:0 20px '+mb+' 20px;text-indent:'+(skip>0?'0':'2em')+';transform:translateY(-'+shift+'px)">'+tx+'</p></div>'
 }
 function nvPageHtml(k){
@@ -3178,11 +3342,13 @@ function nvUdRender(){
 }
 // 首次进入/切到纵排：先渲染目标区间撑出真实滚动高度，再设置滚动位置，
 // 顺序不能反：空容器最大滚动距离为 0，先设 scrollTop 会被钳为 0 且部分 WebView 合成层不重绘
-function nvUdInit(f){
+function nvUdInit(f,tok){
   nvUdRange=[-1,-1]
   nvContent.innerHTML=''
   nvTrack.style.paddingTop='0';nvTrack.style.paddingBottom='0'
   requestAnimationFrame(function(){
+    // 排版已被新任务作废或阅读器已关：旧 rAF 不许再写窗口和滚动位置
+    if((tok!=null&&tok!==nvPageTok)||!nvOn)return
     var p=nvUdPad(),vh=nvScroll.clientHeight
     var target=Math.round(nvUdMaxScroll()*f)
     var s=0,e=nvUdOff.length-1,top0=target-p.t
@@ -3351,7 +3517,7 @@ function nvRelayout(keepFrac){
   nvLayoutTimer=setTimeout(function(){
     nvPaginate(function(){
       $('nvLoading').style.display='none'
-      if(nvMode==='ud')nvUdInit(f)
+      if(nvMode==='ud')nvUdInit(f,nvPageTok)
       else nvScrollToFrac(f)
     })
   },120)
@@ -3534,6 +3700,17 @@ window.addEventListener('pointerup',function(){nvDragging=false;nvHideBubble()})
 nvRange.addEventListener('input',function(){nvScrollToFrac((parseInt(this.value,10)||0)/1000);nvShowBubble()})
 nvRange.addEventListener('change',function(){nvSavePos();nvHideBubble()})
 window.addEventListener('resize',function(){if(nvOn)nvRelayout()})
+// 屏幕常亮：独立记忆 nvWake，进入小说按设置申请，退出释放
+var nvWakeOn=localStorage.getItem('nvWake')==='1'
+function nvWakeUpd(){$('nvWake').classList.toggle('on',nvWakeOn)}
+$('nvWake').addEventListener('click',function(){
+  nvWakeOn=!nvWakeOn;localStorage.setItem('nvWake',nvWakeOn?'1':'0');nvWakeUpd()
+  if(nvWakeOn)wakeAcquire();else wakeRelease()
+  toast(nvWakeOn?'屏幕常亮已开启':'屏幕常亮已关闭')
+})
+document.addEventListener('visibilitychange',function(){
+  if(nvWakeOn&&!AB&&document.visibilityState==='visible'&&nvOn)wakeAcquire()
+})
 function openNovel(item){
   nvItem=item;nvOn=true
   nvSet=nvLoadSet();nvMode=nvSet.mode
@@ -3543,7 +3720,8 @@ function openNovel(item){
   $('nvName').textContent=item.name
   nvContent.innerHTML='';nvTrack.style.paddingTop='0';nvTrack.style.paddingBottom='0';nvTrack.querySelectorAll('.nvpage').forEach(function(n){n.remove()})
   $('nvLoading').style.display='block';$('nvTocMask').classList.remove('on')
-  nvToggleUI(true)
+  nvToggleUI(true);nvWakeUpd()
+  if(nvWakeOn)wakeAcquire()
   if(AB)AB.setViewer(true)
   syncBack()
   var p
@@ -3558,7 +3736,7 @@ function openNovel(item){
     nvPaginate(function(){
       if(!nvOn||nvItem!==item)return
       $('nvLoading').style.display='none'
-      if(nvMode==='ud')nvUdInit(f)
+      if(nvMode==='ud')nvUdInit(f,nvPageTok)
       else nvScrollToFrac(f)
     })
     history.pushState({t:'nv',path:item.path},'')
@@ -3578,14 +3756,606 @@ function closeNovel(push){
   nvTrack.querySelectorAll('.nvpage').forEach(function(n){n.remove()})
   $('nvTocMask').classList.remove('on')
   nvScroll.scrollTop=0;nvTrack.style.transform=''
+  wakeRelease()
   if(AB)AB.setViewer(false)
   syncBack()
   if(push&&history.state&&history.state.t==='nv')history.back()
   consumePendingTree()
 }
 
+// ============ PDF 阅读器（pdf.js legacy，仅 App；px/py 原生吸附整页 + sy 条漫连续，交互与图片阅读器一致） ============
+var pdfOn=false,pdfItem=null,pdfDoc=null,pdfNum=0,pdfTok=0
+var pdfMode='ud',pdfStrip=true,pdfReady=false,pdfLand=false,pdfUI=true
+var pdfMeta=[],pdfPageProms=[],pdfUnits=[],pdfOrder=[],pdfTasks={}
+var pdfOff=[]
+var pdfCur=0,pdfSaveT=0,pdfGap=0
+var pdfRenderActive=0,pdfRenderQueue=[]
+var PDF_MAX_CONCURRENT=2
+var pdfScale=1
+var pdfObserver=null,pdfTrackRaf=0
+var pdfBox=$('pdfr'),pdfScrollEl=$('pdfScroll'),pdfLoadingEl=$('pdfLoading')
+var pdfDPR=Math.min(2,window.devicePixelRatio||1)
+// paged 缩放（px/py），条漫缩放走 pdfScale 烘焙
+var PZ={s:1,tx:0,ty:0,base:null}
+var PG={mode:'none',sx:0,sy:0,psx:0,psy:0,moved:false,t:0,d0:0,s0:1,fx:0,fy:0,sprev:1}
+var pdfLastTap=0,pdfTapTask=0,pdfBubT=0
+var pdfIsX=false,pdfIsStrip=false
+var PDF_MODE_ICON={ud:'↓',lr:'»',rl:'«'}
+var PDF_MODE_NAME={ud:'上下（条漫）',lr:'左右翻页',rl:'右左翻页'}
+function pdfLoadSet(){
+  try{
+    var s=JSON.parse(localStorage.getItem('pdfSet')||'{}')
+    return{mode:s.mode==='lr'||s.mode==='rl'?s.mode:'ud',strip:s.strip===false?false:true}
+  }catch(e){return{mode:'ud',strip:true}}
+}
+function pdfPosKey(){return(ROOT&&ROOT.name?ROOT.name:'')+'|'+(pdfItem?pdfItem.path:'')}
+var pdfLibP=null
+function ensurePdfLib(){
+  if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib)
+  if(pdfLibP)return pdfLibP
+  pdfLibP=new Promise(function(res,rej){
+    var sc=document.createElement('script');sc.src='pdfjs/pdf.min.js'
+    sc.onload=function(){window.pdfjsLib.GlobalWorkerOptions.workerSrc='pdfjs/pdf.worker.min.js';res(window.pdfjsLib)}
+    sc.onerror=function(){pdfLibP=null;if(sc.parentNode)sc.parentNode.removeChild(sc);rej(new Error('pdfjs load fail'))}
+    document.body.appendChild(sc)
+  })
+  return pdfLibP
+}
+function pdfGetPage(i){
+  if(!pdfPageProms[i])pdfPageProms[i]=pdfDoc.getPage(i+1)
+  return pdfPageProms[i]
+}
+function pdfCancelTask(idx){
+  var t=pdfTasks[idx]
+  if(t){try{t.cancel()}catch(e){}delete pdfTasks[idx]}
+}
+function openPdf(item){
+  if(!AB){toast('PDF 仅在安卓 App 内支持阅读');return}
+  pdfItem=item;pdfOn=true;pdfTok++
+  var tok=pdfTok
+  pdfDoc=null;pdfNum=0;pdfMeta=[];pdfPageProms=[];pdfUnits=[];pdfOrder=[];pdfTasks={}
+  pdfReady=false;pdfScale=1;pdfCur=0;PZ={s:1,tx:0,ty:0,base:null}
+  $('pdfName').textContent=item.name||''
+  var st=pdfLoadSet();pdfMode=st.mode;pdfStrip=st.strip
+  pdfApplyModeUI()
+  pdfScrollEl.innerHTML='';pdfScrollEl.scrollTop=0;pdfScrollEl.scrollLeft=0
+  pdfLoadingEl.style.display='block';pdfLoadingEl.textContent='正在加载 PDF…'
+  pdfUI=true;pdfBox.classList.add('on');pdfBox.classList.remove('ui-off')
+  pdfLand=false;pdfOrientUpd();pdfWakeUpd()
+  if(AB){AB.setViewer(true);AB.setOrient(0);syncBack()}
+  history.pushState({t:'pdf',path:item.path},'')
+  var saved=parseInt(localStorage.getItem('pdfpos:'+pdfPosKey()),10)
+  var startIdx=isFinite(saved)?saved:0
+  ensurePdfLib().then(function(lib){
+    // range 走 206 分片按需读取；disableAutoFetch 不预取不可见页数据，首屏与滚动都更省
+    return lib.getDocument({url:item.vurl,cMapUrl:'pdfjs/cmaps/',cMapPacked:true,
+      standardFontDataUrl:'pdfjs/standard_fonts/',isEvalSupported:false,
+      disableRange:false,disableAutoFetch:true}).promise
+  }).then(function(doc){
+    if(tok!==pdfTok||!pdfOn){try{doc.destroy()}catch(e){}return}
+    pdfDoc=doc;pdfNum=doc.numPages
+    pdfCur=Math.max(0,Math.min(pdfNum-1,startIdx))
+    pdfBuild(pdfCur)
+    // 元数据预取延后，让首屏可视页先渲染；它只用于条漫精确撑高，不阻塞看页
+    setTimeout(function(){if(tok===pdfTok)pdfPrefetchMeta(tok)},200)
+  }).catch(function(){
+    if(tok===pdfTok&&pdfOn){
+      pdfLoadingEl.textContent='PDF 打开失败'
+      setTimeout(function(){if(tok===pdfTok)closePdf(false)},1100)
+    }
+  })
+}
+// 顺序预取每页尺寸，供条漫撑高；每 16 页批量落位
+function pdfPrefetchMeta(tok){
+  var idx=0
+  function loop(){
+    if(tok!==pdfTok||!pdfDoc)return
+    if(idx>=pdfNum){pdfReady=true;pdfStripApplyWidths();pdfLoadingEl.style.display='none';return}
+    var cur=idx++
+    pdfGetPage(cur).then(function(page){
+      if(tok!==pdfTok)return
+      var vp=page.getViewport({scale:1})
+      var was=!pdfMeta[cur]
+      pdfMeta[cur]={w:vp.width,h:vp.height}
+      if(was&&(cur%16===0||cur>=pdfNum-1))pdfStripApplyWidths()
+      if(cur%32===0)pdfLoadingEl.textContent='正在排版… '+Math.round((cur+1)/pdfNum*100)+'%'
+      loop()
+    }).catch(function(){if(tok===pdfTok){pdfMeta[cur]={w:1,h:1.414};loop()}})
+  }
+  loop()
+}
+// 条漫固定 px 宽度链：缩放烘焙后重算页高；与图片阅读器 stripApplyWidth 同理
+function pdfStripApplyWidths(){
+  if(!pdfIsStrip)return
+  var wrap=document.getElementById('pdfStripWrap')
+  if(!wrap)return
+  var W=Math.max(1,Math.round(pdfScrollEl.clientWidth*pdfScale))
+  wrap.style.width=W+'px'
+  for(var i=0;i<pdfUnits.length;i++){
+    var u=pdfUnits[i],m=pdfMeta[i]
+    u.style.width=W+'px'
+    u.style.height=(m?Math.round(W*m.h/m.w):Math.round(W*1.414))+'px'
+    var cv=u.querySelector('canvas');if(cv)cv.style.width=W+'px'
+    if(u.dataset.z&&u.dataset.z!=='s'+pdfScale){
+      pdfCancelTask(i);u.removeAttribute('data-rd');u.removeAttribute('data-z')
+      var old=u.querySelector('canvas');if(old)old.remove()
+    }
+  }
+  // 同步偏移表，滚动跟踪/进度用它做索引，避免每帧读 offsetTop 强制布局
+  pdfRebuildOff()
+  pdfScheduleRender()
+}
+// 由各单元当前高度重建条漫偏移表（含页间距）
+function pdfRebuildOff(){
+  if(!pdfIsStrip)return
+  pdfOff=[0];var acc=0
+  for(var q=0;q<pdfUnits.length;q++){acc+=pdfUnits[q].offsetHeight+pdfGap;pdfOff.push(acc)}
+}
+// 构建全部页单元；px/py 尺寸由 CSS 吸附，sy 用固定 px 高度
+function pdfBuild(cur){
+  if(pdfObserver){pdfObserver.disconnect();pdfObserver=null}
+  Object.keys(pdfTasks).forEach(function(k){pdfCancelTask(+k)})
+  pdfRenderQueue.length=0;pdfRenderActive=0
+  PZ={s:1,tx:0,ty:0,base:null}
+  pdfIsX=pdfMode!=='ud'
+  pdfIsStrip=pdfMode==='ud'&&pdfStrip
+  pdfScrollEl.className=pdfIsX?'px':(pdfIsStrip?'sy':'py')
+  pdfScrollEl.innerHTML=''
+  pdfUnits=[];pdfOrder=[]
+  var n=pdfNum
+  if(pdfIsX&&pdfMode==='rl'){for(var r=n-1;r>=0;r--)pdfOrder.push(r)}
+  else{for(var f=0;f<n;f++)pdfOrder.push(f)}
+  var host=pdfScrollEl,frag=document.createDocumentFragment()
+  var wrapEl=null
+  if(pdfIsStrip){
+    wrapEl=document.createElement('div');wrapEl.id='pdfStripWrap'
+    host=wrapEl
+  }
+  var W0=pdfScrollEl.clientWidth||window.innerWidth
+  for(var i=0;i<n;i++){
+    var u=document.createElement('div')
+    u.className='pdfu '+(pdfIsX?'x':(pdfIsStrip?'ys':'yp'))
+    u.dataset.i=String(i)
+    if(pdfIsStrip){
+      var m0=pdfMeta[i],h0=m0?Math.round(W0*m0.h/m0.w):Math.round(W0*1.414)
+      u.style.width=W0+'px';u.style.height=h0+'px'
+    }
+    u._idx=i
+    if(wrapEl)wrapEl.appendChild(u);else frag.appendChild(u)
+    pdfUnits.push(u)
+  }
+  if(wrapEl){pdfScrollEl.appendChild(wrapEl)}else{pdfScrollEl.appendChild(frag)}
+  pdfStripApplyWidths()
+  var margin=pdfIsX?'0px 1600px':'1600px 0px'
+  pdfObserver=new IntersectionObserver(function(es){
+    es.forEach(function(en){
+      var i=en.target._idx
+      if(en.isIntersecting)pdfRenderUnit(i)
+      else if(Math.abs(i-pdfCur)>8)pdfReleaseUnit(i)
+    })
+  },{root:pdfScrollEl,rootMargin:margin})
+  pdfUnits.forEach(function(u){pdfObserver.observe(u)})
+  // 整页/横向：每单元一屏，偏移表直接数学计算，跟踪页码零布局读取
+  if(!pdfIsStrip){
+    pdfOff=[0];var step=pdfIsX?(pdfScrollEl.clientWidth||window.innerWidth):pdfScrollEl.clientHeight
+    for(var p=1;p<=n;p++)pdfOff.push(p*step)
+  }
+  requestAnimationFrame(function(){
+    pdfScrollToUnit(cur,false)
+    pdfScheduleRender()
+  })
+  pdfInfoUpd()
+}
+// 渲染单页 canvas：sy 按容器全宽*pdfScale；px/py 适应整屏。并发闸门限制同时解码数，滚动不卡
+function pdfRenderUnit(idx){
+  var u=pdfUnits[idx]
+  if(!u)return
+  var zkey=pdfIsStrip?'s'+pdfScale:'p'
+  if(u.dataset.rd==='1'&&u.dataset.z===zkey)return
+  if(u.dataset.q==='1')return
+  u.dataset.q='1'
+  var go=function(){
+    pdfRenderActive++
+    var cv=u.querySelector('canvas')
+    if(!cv){cv=document.createElement('canvas');u.appendChild(cv)}
+    pdfGetPage(idx).then(function(page){
+      if(tok2!==pdfTok||!cv.isConnected||pdfUnits[idx]!==u){pdfDone();return}
+      // 等该页真实尺寸就绪，避免用 A4 估算比例渲染后再返工；元数据预取很快
+      var m=pdfMeta[idx]
+      if(!m){
+        // 元数据尚未到：直接由本渲染拿一次精确尺寸并回填，不依赖串行预取
+        var vp0=page.getViewport({scale:1})
+        m={w:vp0.width,h:vp0.height};pdfMeta[idx]=m
+      }
+      var s,cw,ch
+      if(pdfIsStrip){
+        var W=Math.max(1,Math.round((pdfScrollEl.clientWidth||window.innerWidth)*pdfScale))
+        s=W/m.w;cw=W;ch=Math.round(W*m.h/m.w)
+      }else{
+        var vw=pdfScrollEl.clientWidth||window.innerWidth
+        var vh=pdfScrollEl.clientHeight||window.innerHeight
+        s=Math.min(vw/m.w,vh/m.h)*0.97
+        cw=Math.round(m.w*s);ch=Math.round(m.h*s)
+      }
+      var vp=page.getViewport({scale:s*pdfDPR})
+      cv.width=Math.round(vp.width);cv.height=Math.round(vp.height)
+      cv.style.width=cw+'px';cv.style.height=ch+'px'
+      // 条漫：渲染拿到真实比例后校准该页撑高；仅高度变化时才重建偏移表
+      if(pdfIsStrip){
+        var realH=ch
+        if(u.offsetHeight!==realH){u.style.width=cw+'px';u.style.height=realH+'px';pdfRebuildOff()}
+      }
+      if(!pdfIsStrip)cv.style.transform=''
+      var task=page.render({canvasContext:cv.getContext('2d'),viewport:vp})
+      pdfTasks[idx]=task
+      u.dataset.z=zkey;u.dataset.rd='1'
+      return task.promise.then(function(){
+        pdfLoadingEl.style.display='none'
+        if(pdfTasks[idx]===task)delete pdfTasks[idx]
+      }).catch(function(){if(pdfTasks[idx]===task)delete pdfTasks[idx]})
+    }).catch(function(){}).then(function(){
+      u.removeAttribute('data-q');pdfDone()
+    })
+  }
+  var tok2=pdfTok
+  if(pdfRenderActive>=PDF_MAX_CONCURRENT){go._d=Math.abs(idx-pdfCur);pdfRenderQueue.push(go);return}
+  go()
+}
+function pdfDone(){
+  pdfRenderActive=Math.max(0,pdfRenderActive-1)
+  // 先渲染当前页，再按距离当前页远近消费队列，快速滑动时远处页让路
+  if(pdfRenderQueue.length){
+    var best=0,bestD=1e9
+    for(var i=0;i<pdfRenderQueue.length;i++){
+      var d=pdfRenderQueue[i]._d
+      if(d<bestD){bestD=d;best=i}
+    }
+    var fn=pdfRenderQueue.splice(best,1)[0]
+    fn()
+  }
+}
+function pdfReleaseUnit(idx){
+  pdfCancelTask(idx)
+  var u=pdfUnits[idx]
+  if(!u)return
+  u.removeAttribute('data-rd');u.removeAttribute('data-z')
+  var cv=u.querySelector('canvas');if(cv)cv.remove()
+}
+function pdfScheduleRender(){if(!pdfWinRaf2)pdfWinRaf2=requestAnimationFrame(function(){pdfWinRaf2=0;pdfRenderVisible()})}
+var pdfWinRaf2=0
+// 用偏移表二分定位可见页区间，零 offsetTop 读取；区间外已渲染的延迟释放（避免来回滑动反复解码）
+function pdfVisiblePageRange(pad){
+  var pos=pdfIsX?pdfScrollEl.scrollLeft:pdfScrollEl.scrollTop
+  var size=pdfIsX?pdfScrollEl.clientWidth:pdfScrollEl.clientHeight
+  var lo=pos-pad,hi=pos+size+pad,s=0,e=Math.max(0,pdfOff.length-2)
+  while(s<e&&pdfOff[s+1]<=lo)s++
+  e=s
+  while(e<pdfOff.length-2&&pdfOff[e]<hi)e++
+  return [s,e]
+}
+function pdfRenderVisible(){
+  if(!pdfUnits.length||!pdfOff.length)return
+  var pad=(pdfIsX?pdfScrollEl.clientWidth:pdfScrollEl.clientHeight)*1.5
+  var r=pdfVisiblePageRange(pad)
+  // 可视区内：按距当前页远近顺序入渲染，当前页最先
+  var idxs=[]
+  for(var i=r[0];i<=r[1];i++)idxs.push(i)
+  idxs.sort(function(a,b){return Math.abs(a-pdfCur)-Math.abs(b-pdfCur)})
+  idxs.forEach(pdfRenderUnit)
+  // 超出更大范围（保留两屏缓冲）才释放
+  var keep=pdfVisiblePageRange(pad+ (pdfIsX?pdfScrollEl.clientWidth:pdfScrollEl.clientHeight))
+  for(var j=0;j<pdfUnits.length;j++){
+    if((j<keep[0]||j>keep[1])&&pdfUnits[j].dataset.rd)pdfReleaseUnit(j)
+  }
+}
+// 当前页：偏移表二分（O(logN)），零布局读取；rl 物理顺序反向但 pdfCur 仍是真实页码
+function pdfTrackCurrent(){
+  if(pdfTrackRaf)return
+  pdfTrackRaf=requestAnimationFrame(function(){
+    pdfTrackRaf=0
+    if(pdfIsStrip&&PZ.s>1.01)return
+    var pos=pdfIsX?pdfScrollEl.scrollLeft:pdfScrollEl.scrollTop
+    var size=pdfIsX?pdfScrollEl.clientWidth:pdfScrollEl.clientHeight
+    var full=pdfIsX?pdfScrollEl.scrollWidth:pdfScrollEl.scrollHeight
+    var idx
+    if(pdfIsX&&pdfMode==='rl'){
+      // rl：DOM 物理倒序，真实页码 idx 对应左边缘位置 (n-1-idx)*屏宽；
+      // 滚动条 0=最左=最高页码 n-1，最大=最右=第1页 0。进度条仍按真实页码左→右，不反转
+      if(pos<=0)idx=pdfNum-1
+      else if(pos+size>=full-4)idx=0
+      else idx=Math.max(0,Math.min(pdfNum-1,pdfNum-1-Math.floor(pos/size)))
+    }else{
+      if(pos+size>=full-4){idx=pdfOrder[pdfOrder.length-1]}
+      else{
+        idx=0
+        for(var k=0;k<pdfOff.length-1;k++){if(pdfOff[k]<=pos)idx=k;else break}
+      }
+    }
+    if(idx!==pdfCur){
+      pdfCur=idx
+      if(!pdfIsStrip)pdfResetZoom()
+      pdfInfoUpd()
+    }
+    pdfRangeUpd(pdfCur/Math.max(1,pdfNum-1))
+  })
+}
+pdfScrollEl.addEventListener('scroll',function(){pdfTrackCurrent();pdfScheduleRender();pdfSavePosSoon()},{passive:true})
+function pdfScrollToUnit(idx,smooth){
+  var u=pdfUnits[idx]
+  if(!u)return
+  pdfCur=Math.max(0,Math.min(pdfNum-1,idx))
+  if(pdfIsX)pdfScrollEl.scrollTo({left:u.offsetLeft,behavior:smooth?'smooth':'auto'})
+  else pdfScrollEl.scrollTo({top:u.offsetTop,behavior:smooth?'smooth':'auto'})
+  pdfInfoUpd();pdfRangeUpd(pdfCur/Math.max(1,pdfNum-1));pdfScheduleRender()
+}
+// dir=+1 前进 -1 后退；rl 物理反向；音量键无动画
+function pdfGo(dir,animated){
+  if(!pdfOn)return
+  if(pdfIsStrip){
+    var max=pdfScrollEl.scrollHeight-pdfScrollEl.clientHeight
+    var t=pdfScrollEl.scrollTop+dir*pdfScrollEl.clientHeight*0.88
+    if(t<0){t=0;toast('已经在开头')}
+    if(t>max){t=max;toast('已经到底了')}
+    pdfScrollEl.scrollTo({top:t,behavior:animated===false?'auto':'smooth'})
+    return
+  }
+  var step=pdfMode==='rl'?-dir:dir
+  var ni=pdfCur+step
+  if(ni<0){toast(dir>0?'已经是第一页':'已经是最后一页');return}
+  if(ni>=pdfNum){toast(dir>0?'已经是最后一页':'已经是第一页');return}
+  pdfScrollToUnit(ni,false)
+}
+function pdfInfoUpd(){$('pdfInfo').textContent=pdfNum?(pdfCur+1)+' / '+pdfNum:''}
+function pdfRangeUpd(frac){
+  frac=Math.max(0,Math.min(1,frac))
+  $('pdfRange').value=String(Math.round(frac*1000))
+  $('pdfPct').textContent=Math.round(frac*100)+'%'
+}
+function pdfPageAtFrac(frac){return Math.round(frac*Math.max(0,pdfNum-1))+1}
+function pdfShowBubble(){
+  $('pdfBubble').textContent='第 '+pdfPageAtFrac((parseInt($('pdfRange').value,10)||0)/1000)+' 页 / 共 '+pdfNum+' 页'
+  $('pdfBubble').classList.add('on');clearTimeout(pdfBubT)
+}
+function pdfHideBubble(){clearTimeout(pdfBubT);pdfBubT=setTimeout(function(){$('pdfBubble').classList.remove('on')},350)}
+$('pdfRange').addEventListener('pointerdown',pdfShowBubble)
+window.addEventListener('pointerup',pdfHideBubble)
+$('pdfRange').addEventListener('input',pdfShowBubble)
+$('pdfRange').addEventListener('change',function(){
+  var f=(parseInt(this.value,10)||0)/1000
+  pdfScrollToUnit(pdfPageAtFrac(f)-1,false)
+  pdfHideBubble();pdfSavePosSoon()
+})
+function pdfSavePosSoon(){clearTimeout(pdfSaveT);pdfSaveT=setTimeout(pdfSavePos,350)}
+function pdfSavePos(){
+  if(!pdfOn||!pdfItem||!pdfNum)return
+  localStorage.setItem('pdfpos:'+pdfPosKey(),String(pdfCur))
+}
+// ---- 模式：ud(默认条漫) → lr → rl；条漫键仅 ud 可见，切换连续/整页 ----
+function pdfApplyModeUI(){
+  $('pdfModeIco').textContent=PDF_MODE_ICON[pdfMode]||'↓'
+  $('pdfStrip').classList.toggle('hidden',pdfMode!=='ud')
+  $('pdfStrip').classList.toggle('on',pdfMode==='ud'&&pdfStrip)
+}
+$('pdfMode').addEventListener('click',function(){
+  if(!pdfDoc)return
+  pdfSavePos()
+  pdfMode=pdfMode==='ud'?'lr':(pdfMode==='lr'?'rl':'ud')
+  if(pdfMode==='ud')pdfStrip=true
+  localStorage.setItem('pdfSet',JSON.stringify({mode:pdfMode,strip:pdfStrip}))
+  pdfApplyModeUI()
+  if(pdfDoc)pdfBuild(pdfCur)
+  toast(PDF_MODE_NAME[pdfMode])
+})
+$('pdfStrip').addEventListener('click',function(){
+  if(pdfMode!=='ud'){toast('条漫仅支持上下方向');return}
+  pdfStrip=!pdfStrip
+  localStorage.setItem('pdfSet',JSON.stringify({mode:pdfMode,strip:pdfStrip}))
+  pdfApplyModeUI()
+  pdfBuild(pdfCur)
+  toast(pdfStrip?'条漫连续滚动':'整页翻页')
+})
+// ---- 缩放：条漫 zoom 内层烘焙；整页 transform 当前页，放大后单指拖动 ----
+function pdfCurCanvas(){var u=pdfUnits[pdfCur];return u?u.querySelector('canvas'):null}
+function pdfResetZoom(){
+  PZ.s=1;PZ.tx=0;PZ.ty=0;PZ.base=null
+  if(pdfIsStrip){
+    var w=document.getElementById('pdfStripWrap');if(w)w.style.removeProperty('zoom')
+    pdfScrollEl.style.overflowX='hidden';pdfScrollEl.style.touchAction=''
+    return
+  }
+  var cv=pdfCurCanvas();if(cv)cv.style.transform=''
+  pdfScrollEl.style.touchAction=''
+}
+function pdfViewport(){return{w:window.innerWidth,h:pdfScrollEl.clientHeight||window.innerHeight}}
+function pdfMeasureBase(){var cv=pdfCurCanvas();if(cv)PZ.base=cv.getBoundingClientRect()}
+function pdfClampPan(){
+  if(!PZ.base)return
+  var vp=pdfViewport()
+  var ox=Math.max(0,(PZ.base.width*PZ.s-vp.w)/2),oy=Math.max(0,(PZ.base.height*PZ.s-vp.h)/2)
+  PZ.tx=Math.max(-ox,Math.min(ox,PZ.tx));PZ.ty=Math.max(-oy,Math.min(oy,PZ.ty))
+}
+var pdfZRaf=0
+function pdfZRender(){
+  pdfZRaf=0
+  if(pdfIsStrip){
+    var w=document.getElementById('pdfStripWrap')
+    var z=PZ.s>1.01
+    if(w)w.style.setProperty('zoom',String(PZ.s))
+    pdfScrollEl.style.overflowX=z?'auto':'hidden'
+    pdfScrollEl.style.touchAction=z?'pan-x pan-y':''
+    if(PG.mode==='pinch'&&Math.abs(PZ.s-PG.sprev)>1e-6){
+      var rr=PZ.s/PG.sprev
+      pdfScrollEl.scrollLeft=(pdfScrollEl.scrollLeft+PG.fx)*rr-PG.fx
+      pdfScrollEl.scrollTop=(pdfScrollEl.scrollTop+PG.fy)*rr-PG.fy
+      PG.sprev=PZ.s
+    }
+    return
+  }
+  var cv=pdfCurCanvas();if(!cv)return
+  pdfClampPan()
+  cv.style.transform='translate('+PZ.tx+'px,'+PZ.ty+'px) scale('+PZ.s+')'
+  pdfScrollEl.style.touchAction=PZ.s>1?'none':''
+}
+function pdfZSchedule(){if(!pdfZRaf)pdfZRaf=requestAnimationFrame(pdfZRender)}
+function pdfPinchDist(a,b){var dx=a.clientX-b.clientX,dy=a.clientY-b.clientY;return Math.sqrt(dx*dx+dy*dy)}
+function pdfStripFocusZoom(cx,cy,newS){
+  var rect=pdfScrollEl.getBoundingClientRect()
+  var fx=cx-rect.left,fy=cy-rect.top,s0=PZ.s||1,s1=Math.max(1,newS)
+  PZ.s=s1;pdfZRender()
+  if(Math.abs(s1-s0)>1e-6){
+    pdfScrollEl.scrollLeft=(pdfScrollEl.scrollLeft+fx)*s1/s0-fx
+    pdfScrollEl.scrollTop=(pdfScrollEl.scrollTop+fy)*s1/s0-fy
+  }
+}
+// 条漫松手：临时 zoom 烘焙进 pdfScale 并重渲可见页
+function pdfBakeZoom(q){
+  var old=pdfScale,ns=Math.max(1,Math.min(5,Math.round(old*q*100)/100))
+  var w=document.getElementById('pdfStripWrap');if(w)w.style.removeProperty('zoom')
+  if(ns===old){pdfScheduleRender();return}
+  var sx=pdfScrollEl.scrollLeft,sy=pdfScrollEl.scrollTop,rr=ns/old
+  pdfScale=ns;pdfStripApplyWidths()
+  pdfScrollEl.scrollLeft=(sx)*rr
+  pdfScrollEl.scrollTop=(sy)*rr
+  pdfScheduleRender()
+}
+function pdfZoomAt(cx,cy,target){
+  if(pdfIsStrip){pdfStripFocusZoom(cx,cy,PZ.s>1.01?1:target);return}
+  if(PZ.s>1.01){pdfResetZoom();return}
+  pdfMeasureBase()
+  if(!PZ.base||!PZ.base.width)return
+  var vp=pdfViewport()
+  PZ.s=target
+  PZ.tx=(cx-vp.w/2)*(1-target);PZ.ty=(cy-vp.h/2)*(1-target)
+  pdfZRender()
+}
+pdfScrollEl.addEventListener('touchstart',function(e){
+  var t=e.touches[0]
+  PG.sx=t.clientX;PG.sy=t.clientY;PG.t=Date.now();PG.moved=false
+  if(e.touches.length===2){
+    clearTimeout(pdfTapTask)
+    var t2=e.touches[1]
+    PG.mode='pinch';PG.d0=pdfPinchDist(t,t2)
+    PG.s0=PZ.s;PG.tx0=PZ.tx;PG.ty0=PZ.ty;PG.sprev=PZ.s
+    if(pdfIsStrip){var r0=pdfScrollEl.getBoundingClientRect();PG.fx=(t.clientX+t2.clientX)/2-r0.left;PG.fy=(t.clientY+t2.clientY)/2-r0.top}
+    if(!pdfIsStrip&&!PZ.base)pdfMeasureBase()
+    e.preventDefault()
+  }else if(PZ.s>1&&!pdfIsStrip){
+    PG.mode='pan';PG.psx=t.clientX;PG.psy=t.clientY;e.preventDefault()
+  }else{
+    PG.mode='none'
+  }
+},{passive:false})
+pdfScrollEl.addEventListener('touchmove',function(e){
+  if(PG.mode==='pinch'&&e.touches.length>=2){
+    e.preventDefault()
+    var t=e.touches[0],t2=e.touches[1]
+    var ratio=pdfPinchDist(t,t2)/PG.d0
+    PZ.s=Math.max(1,Math.min(5,PG.s0*ratio))
+    if(pdfIsStrip){
+      var r1=pdfScrollEl.getBoundingClientRect()
+      PG.fx=(t.clientX+t2.clientX)/2-r1.left;PG.fy=(t.clientY+t2.clientY)/2-r1.top
+    }else{
+      var vp=pdfViewport(),mx=(t.clientX+t2.clientX)/2,my=(t.clientY+t2.clientY)/2
+      PZ.tx=(mx-vp.w/2)-(mx-vp.w/2-PG.tx0)*(PZ.s/PG.s0)
+      PZ.ty=(my-vp.h/2)-(my-vp.h/2-PG.ty0)*(PZ.s/PG.s0)
+    }
+    pdfZSchedule()
+  }else if(PG.mode==='pan'){
+    e.preventDefault()
+    var p=e.touches[0]
+    if(Math.abs(p.clientX-PG.sx)>10||Math.abs(p.clientY-PG.sy)>10)PG.moved=true
+    PZ.tx+=p.clientX-PG.psx;PZ.ty+=p.clientY-PG.psy
+    PG.psx=p.clientX;PG.psy=p.clientY;pdfZSchedule()
+  }else{
+    var q=e.touches[0]
+    if(Math.abs(q.clientX-PG.sx)>10||Math.abs(q.clientY-PG.sy)>10){PG.moved=true;clearTimeout(pdfTapTask)}
+  }
+},{passive:false})
+function pdfHandleTap(t){
+  var now=Date.now()
+  if(now-pdfLastTap<280){
+    clearTimeout(pdfTapTask);pdfLastTap=0
+    pdfZoomAt(t.clientX,t.clientY,2)
+  }else{
+    pdfLastTap=now
+    clearTimeout(pdfTapTask)
+    pdfTapTask=setTimeout(function(){pdfUI=!pdfUI;pdfBox.classList.toggle('ui-off',!pdfUI)},290)
+  }
+}
+pdfScrollEl.addEventListener('touchend',function(e){
+  if(PG.mode==='pinch'){
+    if(e.touches.length===1&&PZ.s>1.01&&!pdfIsStrip){
+      var r=e.touches[0];PG.mode='pan';PG.psx=r.clientX;PG.psy=r.clientY
+    }else{
+      // 条漫把临时 zoom 烘焙进排版倍率，随后复位手势缩放状态
+      if(pdfIsStrip&&PZ.s>1.01){pdfBakeZoom(PZ.s/(PG.s0||1));PZ.s=1;PZ.tx=0;PZ.ty=0}
+      if(PZ.s<=1.01)pdfResetZoom()
+      PG.mode='none'
+    }
+    return
+  }
+  if(PG.mode==='pan'){
+    var quick=!PG.moved&&Date.now()-PG.t<300
+    PG.mode='none';pdfZRender()
+    if(quick&&e.changedTouches.length===0)pdfHandleTap(e.changedTouches[0])
+    return
+  }
+  var t=e.changedTouches[0]
+  if(!PG.moved&&Date.now()-PG.t<300&&t)pdfHandleTap(t)
+})
+pdfScrollEl.addEventListener('touchcancel',function(){if(pdfIsStrip)PZ.s=1;pdfResetZoom();PG.mode='none'},{passive:true})
+// ---- 顶/底栏按钮 ----
+$('pdfClose').addEventListener('click',function(){if(history.state&&history.state.t==='pdf')history.back();else closePdf(false)})
+$('pdfPrev').addEventListener('click',function(e){e.stopPropagation();pdfGo(-1,true)})
+$('pdfNext').addEventListener('click',function(e){e.stopPropagation();pdfGo(1,true)})
+var pdfWakeOn=localStorage.getItem('pdfWake')==='1'
+function pdfWakeUpd(){$('pdfWake').classList.toggle('on',pdfWakeOn)}
+$('pdfWake').addEventListener('click',function(){
+  pdfWakeOn=!pdfWakeOn;localStorage.setItem('pdfWake',pdfWakeOn?'1':'0');pdfWakeUpd()
+  if(pdfWakeOn)wakeAcquire();else wakeRelease()
+  toast(pdfWakeOn?'屏幕常亮已开启':'屏幕常亮已关闭')
+})
+document.addEventListener('visibilitychange',function(){
+  if(pdfWakeOn&&!AB&&document.visibilityState==='visible'&&pdfOn)wakeAcquire()
+})
+function pdfOrientUpd(){
+  $('pdfOrient').classList.toggle('land',pdfLand)
+  $('pdfOrient').querySelector('.po-expand').style.display=pdfLand?'none':'block'
+  $('pdfOrient').querySelector('.po-compress').style.display=pdfLand?'block':'none'
+}
+$('pdfOrient').addEventListener('click',function(){
+  if(!AB){toast('横屏模式仅在 App 内可用');return}
+  pdfLand=!pdfLand;AB.setOrient(pdfLand?1:0);pdfOrientUpd()
+})
+window.addEventListener('resize',function(){
+  if(!pdfOn||!pdfDoc)return
+  if(pdfIsStrip)pdfStripApplyWidths()
+  else pdfBuild(pdfCur)
+})
+function closePdf(push){
+  if(!pdfOn)return
+  pdfSavePos()
+  pdfTok++;pdfOn=false
+  if(pdfObserver){pdfObserver.disconnect();pdfObserver=null}
+  Object.keys(pdfTasks).forEach(function(k){pdfCancelTask(+k)})
+  pdfRenderQueue.length=0;pdfRenderActive=0
+  clearTimeout(pdfSaveT);clearTimeout(pdfTapTask);clearTimeout(pdfBubT)
+  cancelAnimationFrame(pdfTrackRaf);cancelAnimationFrame(pdfZRaf);cancelAnimationFrame(pdfWinRaf2)
+  pdfOff=[]
+  if(pdfDoc){try{pdfDoc.destroy()}catch(e){}pdfDoc=null}
+  pdfBox.classList.remove('on','ui-off')
+  pdfScrollEl.innerHTML='';pdfScrollEl.scrollTop=0
+  pdfLand=false
+  wakeRelease()
+  if(AB){AB.setViewer(false);AB.setOrient(0);syncBack()}
+  if(push!==false&&history.state&&history.state.t==='pdf')history.back()
+  consumePendingTree()
+}
+
+
 // dir=+1 阅读前进一张，-1 回退一张；rl 模式视觉反向，文件序号步进随之取反
 function readerGo(dir){
+  if(pdfOn){pdfGo(dir,false);return}
   if(nvOn){novelGo(dir);return}
   resetZoom()
   seekTarget=-1
@@ -3654,6 +4424,7 @@ function wakeRelease(){
 // 网页版切到后台 Wake Lock 会被系统收回，回到前台且仍在阅读时重新申请
 document.addEventListener('visibilitychange',function(){
   if(vWake&&!AB&&document.visibilityState==='visible'&&$('viewer').classList.contains('on'))wakeAcquire()
+  if(pdfWakeOn&&!AB&&document.visibilityState==='visible'&&pdfOn)wakeAcquire()
 })
 function openViewer(list,index,key){
   vList=list;vIdx=index;vKey=key
@@ -3690,7 +4461,7 @@ function closeViewer(push){
   if(readerObserver)readerObserver.disconnect()
   built=false;units=[];ratio=[];seekTarget=-1
   reader.innerHTML=''
-  urlCache.forEach(function(u){URL.revokeObjectURL(u);allUrls.delete(u)});urlCache.clear()
+  urlCache.forEach(releaseBlob);urlCache.clear();urlRev.clear()
   if(push&&history.state&&history.state.t==='viewer')history.back()
   consumePendingTree()
 }
@@ -3985,9 +4756,9 @@ function setupMediaSession(){
   }catch(e){}
 }
 function releaseAll(){
-  urlCache.forEach(function(u){URL.revokeObjectURL(u)});urlCache.clear()
-  coverUrls.forEach(function(u){URL.revokeObjectURL(u)});coverUrls.clear()
-  allUrls.forEach(function(u){URL.revokeObjectURL(u)});allUrls.clear()
+  urlCache.forEach(releaseBlob);urlCache.clear();urlRev.clear()
+  coverUrls.forEach(releaseBlob);coverUrls.clear()
+  allUrls.forEach(releaseBlob);allUrls.clear()
   posterCache.clear();vtQueue.length=0
 }
 </script>

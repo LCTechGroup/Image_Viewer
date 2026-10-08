@@ -64,6 +64,9 @@ public class MainActivity extends Activity {
             Executors.newSingleThreadScheduledExecutor();
     // 目录树并行扫描池：深树（每话一个子文件夹）时多个 SAF 查询并发，4 路为 binder 甜点
     private final ExecutorService scanPool = Executors.newFixedThreadPool(4);
+    // 扫描代次：每次发起扫描加 1，用户取消也加 1；任务发现代次过期立即收工，
+    // 不再提交子目录、不写缓存不回调，避免取消后 io 线程与 4 路扫描池继续空转
+    private volatile int scanGen = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -302,6 +305,9 @@ public class MainActivity extends Activity {
         if (s.endsWith(".ts")) {
             return "video/mp2t";
         }
+        if (s.endsWith(".pdf")) {
+            return "application/pdf";
+        }
         return URLConnection.guessContentTypeFromName(n);
     }
 
@@ -358,35 +364,43 @@ public class MainActivity extends Activity {
 
     // 新选目录 / 手动刷新：显 loading 全量扫描，成功后覆盖树缓存
     private void scanTree(final Uri tree) {
+        final int gen = ++scanGen;
         io.execute(new Runnable() {
             @Override
             public void run() {
-                runFullScan(tree, false);
+                runFullScan(tree, false, gen);
             }
         });
     }
 
     // 历史重开：缓存命中则先秒进，再后台静默全量重扫；无缓存走正常 loading 扫描
     private void scanTreeCachedFirst(final Uri tree) {
+        final int gen = ++scanGen;
         io.execute(new Runnable() {
             @Override
             public void run() {
                 String cached = readTreeCache(tree);
+                if (gen != scanGen) {
+                    return;
+                }
                 if (cached != null) {
                     js("window.__onTreeCached&&window.__onTreeCached(" + cached + ")");
-                    runFullScan(tree, true);
+                    runFullScan(tree, true, gen);
                 } else {
-                    runFullScan(tree, false);
+                    runFullScan(tree, false, gen);
                 }
             }
         });
     }
 
     // 全量扫描：4 路并行查询子目录，Phaser 协调；background 为静默模式（不报错、走更新回调）
-    private void runFullScan(Uri tree, boolean background) {
+    private void runFullScan(Uri tree, boolean background, final int gen) {
         try {
             String rootId = DocumentsContract.getTreeDocumentId(tree);
             String rootName = queryName(tree, rootId);
+            if (gen != scanGen) {
+                return;
+            }
             // 根文档查不到：文件夹已被删除或存储未挂载（授权记录可能仍在，不能再兜底成空树）
             if (rootName == null || rootName.length() == 0) {
                 String uriJson = JSONObject.quote(tree.toString());
@@ -417,9 +431,13 @@ public class MainActivity extends Activity {
                     new java.util.concurrent.atomic.AtomicReference<Exception>(null);
             final java.util.concurrent.Phaser phaser = new java.util.concurrent.Phaser(1);
             phaser.register();
-            scanPool.execute(new DirTask(tree, rootId, root, "", phaser, count, lastUi, firstErr));
+            scanPool.execute(new DirTask(tree, rootId, root, "", phaser, count, lastUi, firstErr, gen));
             phaser.arriveAndAwaitAdvance();
 
+            // 等待期间用户已取消或已发起新扫描：结果作废，不写缓存不回调
+            if (gen != scanGen) {
+                return;
+            }
             Exception err = firstErr.get();
             if (err != null) {
                 if (!background) {
@@ -456,12 +474,14 @@ public class MainActivity extends Activity {
         private final java.util.concurrent.atomic.AtomicInteger count;
         private final java.util.concurrent.atomic.AtomicLong lastUi;
         private final java.util.concurrent.atomic.AtomicReference<Exception> firstErr;
+        private final int gen;
 
         DirTask(Uri tree, String docId, JSONObject node, String path,
                 java.util.concurrent.Phaser phaser,
                 java.util.concurrent.atomic.AtomicInteger count,
                 java.util.concurrent.atomic.AtomicLong lastUi,
-                java.util.concurrent.atomic.AtomicReference<Exception> firstErr) {
+                java.util.concurrent.atomic.AtomicReference<Exception> firstErr,
+                int gen) {
             this.tree = tree;
             this.docId = docId;
             this.node = node;
@@ -470,6 +490,7 @@ public class MainActivity extends Activity {
             this.count = count;
             this.lastUi = lastUi;
             this.firstErr = firstErr;
+            this.gen = gen;
         }
 
         @Override
@@ -477,12 +498,17 @@ public class MainActivity extends Activity {
             try {
                 walkOnce();
             } finally {
+                // 无论是否取消都必须 arrive，否则协调线程在 Phaser 上永久等待，io 线程泄露
                 phaser.arriveAndDeregister();
             }
         }
 
         // 只查一层目录：子目录先按 query 顺序登记进父节点，游标关闭后再提交并行任务
         private void walkOnce() {
+            // 排队期间扫描已被取消：立即收工，绝不 register 新任务
+            if (gen != scanGen) {
+                return;
+            }
             Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId);
             Cursor c = null;
             try {
@@ -497,6 +523,9 @@ public class MainActivity extends Activity {
                 }
                 java.util.ArrayList<DirTask> pending = null;
                 while (c.moveToNext()) {
+                    if (gen != scanGen) {
+                        break;
+                    }
                     String id = c.getString(0);
                     String name = c.getString(1);
                     String mime = c.getString(2);
@@ -516,19 +545,20 @@ public class MainActivity extends Activity {
                         if (pending == null) {
                             pending = new java.util.ArrayList<DirTask>();
                         }
-                        pending.add(new DirTask(tree, id, d, childPath, phaser, count, lastUi, firstErr));
+                        pending.add(new DirTask(tree, id, d, childPath, phaser, count, lastUi, firstErr, gen));
                     } else {
                         JSONObject f = new JSONObject();
                         f.put("name", name);
                         f.put("path", childPath);
-                        f.put("id", (isImage(name) || isVideo(name) || isMht(name) || isTxt(name)) ? id : "");
+                        f.put("id", (isImage(name) || isVideo(name) || isMht(name) || isTxt(name)
+                                || isPdf(name)) ? id : "");
                         if (modified != 0L) {
                             f.put("m", modified);
                         }
                         node.getJSONArray("files").put(f);
                     }
                     int n = count.incrementAndGet();
-                    if ((n & 255) == 0) {
+                    if ((n & 255) == 0 && gen == scanGen) {
                         long now = android.os.SystemClock.elapsedRealtime();
                         long prev = lastUi.get();
                         if (now - prev >= 500 && lastUi.compareAndSet(prev, now)) {
@@ -539,7 +569,7 @@ public class MainActivity extends Activity {
                 }
                 c.close();
                 c = null;
-                if (pending != null) {
+                if (pending != null && gen == scanGen) {
                     for (DirTask t : pending) {
                         // register 必须先于 execute，杜绝任务先 arrive 导致 Phaser 提前放行
                         phaser.register();
@@ -579,19 +609,35 @@ public class MainActivity extends Activity {
     private String readTreeCache(Uri tree) {
         java.io.FileInputStream fis = null;
         try {
-            java.io.File f = treeCacheFile(tree);
+            final java.io.File f = treeCacheFile(tree);
             if (f == null || !f.isFile() || f.length() == 0) {
                 return null;
             }
-            int max = 64 * 1024 * 1024;
-            int len = (int) Math.min(f.length(), max);
+            // 文件超过上限说明读取必然截断，直接判损坏，交给全量扫描
+            long flen = f.length();
+            final int max = 64 * 1024 * 1024;
+            if (flen > max) {
+                f.delete();
+                return null;
+            }
+            int len = (int) flen;
             byte[] b = new byte[len];
             fis = new java.io.FileInputStream(f);
             int off = 0, r;
             while (off < len && (r = fis.read(b, off, len - off)) > 0) {
                 off += r;
             }
-            return off > 0 ? new String(b, 0, off, "UTF-8") : null;
+            if (off != len) {
+                // 读不满说明文件被写坏（进程被杀等），删掉避免每次启动都解析失败
+                f.delete();
+                return null;
+            }
+            String s = new String(b, 0, off, "UTF-8");
+            if (!validTreeJson(s)) {
+                f.delete();
+                return null;
+            }
+            return s;
         } catch (Exception e) {
             return null;
         } finally {
@@ -604,23 +650,68 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void writeTreeCache(Uri tree, String json) {
-        java.io.FileOutputStream fos = null;
+    // 树缓存完整性校验：语法可解析且根节点必备字段齐全，损坏/截断的 JSON 不得注入 WebView
+    private boolean validTreeJson(String s) {
         try {
-            java.io.File f = treeCacheFile(tree);
-            if (f == null) {
-                return;
+            JSONObject root = new JSONObject(s);
+            String name = root.optString("name", null);
+            if (name == null || name.length() == 0) {
+                return false;
             }
-            fos = new java.io.FileOutputStream(f);
-            fos.write(json.getBytes("UTF-8"));
-        } catch (Exception ignored) {
-        } finally {
-            if (fos != null) {
-                try {
-                    fos.close();
-                } catch (Exception ignored) {
+            if (!(root.get("dirs") instanceof JSONArray)
+                    || !(root.get("files") instanceof JSONArray)) {
+                return false;
+            }
+            // 递归校验每个节点结构，截断文件往往缺尾括号或半截节点
+            return validTreeNodes(root);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean validTreeNodes(JSONObject n) {
+        try {
+            JSONArray dirs = n.getJSONArray("dirs");
+            JSONArray files = n.getJSONArray("files");
+            for (int i = 0; i < dirs.length(); i++) {
+                JSONObject d = dirs.optJSONObject(i);
+                if (d == null || d.optString("path", "").length() == 0
+                        || !validTreeNodes(d)) {
+                    return false;
                 }
             }
+            for (int i = 0; i < files.length(); i++) {
+                JSONObject fo = files.optJSONObject(i);
+                if (fo == null || fo.optString("name", "").length() == 0
+                        || fo.optString("path", "").length() == 0) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void writeTreeCache(Uri tree, String json) {
+        try {
+            java.io.File f = treeCacheFile(tree);
+            if (f == null || !validTreeJson(json)) {
+                return;
+            }
+            // 先写临时文件再改名，保证缓存文件要么是旧完整版要么是新完整版，不会留下半截 JSON
+            java.io.File tmp = new java.io.File(f.getParentFile(), f.getName() + ".tmp");
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(tmp);
+            try {
+                fos.write(json.getBytes("UTF-8"));
+                fos.getFD().sync();
+            } finally {
+                fos.close();
+            }
+            if (!tmp.renameTo(f)) {
+                tmp.delete();
+            }
+        } catch (Exception ignored) {
         }
     }
 
@@ -663,6 +754,10 @@ public class MainActivity extends Activity {
 
     private static boolean isTxt(String n) {
         return n.toLowerCase().endsWith(".txt");
+    }
+
+    private static boolean isPdf(String n) {
+        return n.toLowerCase().endsWith(".pdf");
     }
 
     // ============ 文件夹授权记录（最新在前） ============
@@ -856,6 +951,12 @@ public class MainActivity extends Activity {
                 return;
             }
             scanTree(treeUri);
+        }
+
+        // 用户在加载遮罩点放弃：作废在跑的扫描，目录任务快速收工，释放 io 与扫描线程
+        @JavascriptInterface
+        public void cancelScan() {
+            scanGen++;
         }
 
         // 最近一条历史记录的根 uri，供 JS 判断当前树是否已加载而无需重新扫描

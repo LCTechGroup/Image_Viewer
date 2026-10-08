@@ -34,6 +34,7 @@ import androidx.annotation.NonNull;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -107,9 +108,11 @@ public class VideoActivity extends Activity {
         setContentView(R.layout.activity_video);
 
         prefs = getSharedPreferences("app", MODE_PRIVATE);
-        // 正常播放倍速不持久化，每次进入默认 1x（intent 可临时覆盖）；长按倍速持久化
+        // 正常播放倍速不持久化，每次进入默认 1x（intent 可临时覆盖）
         normalSpeed = clampSpeed(getIntent().getFloatExtra(EX_SPEED, 1f));
-        holdSpeed = clampSpeed(getIntent().getFloatExtra(EX_HOLD, readSpeed("vpHoldSpeed", 2f)));
+        // 长按倍速以原生 prefs 为准（本页滑条改过只写这里），intent 仅在从未存过时给初值
+        // 不能让 intent 优先：JS 侧网页播放器已阉割，传来的恒为默认 2，会覆盖用户的持久设置
+        holdSpeed = readSpeed("vpHoldSpeed", clampSpeed(getIntent().getFloatExtra(EX_HOLD, 2f)));
         // 循环 / 单次设置持久化
         loop = prefs.getBoolean("vpLoop", false);
 
@@ -148,7 +151,11 @@ public class VideoActivity extends Activity {
         String id = getIntent().getStringExtra(EX_ID);
         Uri doc = DocumentsContract.buildDocumentUriUsingTree(tree, id);
 
-        player = new ExoPlayer.Builder(this).build();
+        // 走 AudioTrack.setPlaybackParams 即时变速：默认 MediaCodec 通道切速在很多设备有数百 ms
+        // 延迟（按下慢半拍、松手还冲一段），AudioTrack 通道在 framework 层立即生效
+        DefaultRenderersFactory renderers = new DefaultRenderersFactory(this)
+                .setEnableAudioTrackPlaybackParams(true);
+        player = new ExoPlayer.Builder(this, renderers).build();
         playerView.setPlayer(player);
         player.setMediaItem(MediaItem.fromUri(doc));
         player.setPlaybackSpeed(normalSpeed);
@@ -616,7 +623,7 @@ public class VideoActivity extends Activity {
                 switch (e.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
                         sx = e.getX(); sy = e.getY(); moved = false; maybeHold = true;
-                        ui.postDelayed(holdTrigger, 200);
+                        ui.postDelayed(holdTrigger, 150);
                         return true;
                     case MotionEvent.ACTION_MOVE: {
                         float dx = e.getX() - sx, dy = e.getY() - sy;
@@ -645,12 +652,14 @@ public class VideoActivity extends Activity {
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
                         ui.removeCallbacks(holdTrigger);
-                        seekTip.setVisibility(View.GONE);
+                        // 先恢复倍速让 renderer 消息尽早排队，再做 UI 更新，松手即回原速不"冲"一段
                         if (holding) {
                             holding = false;
-                            holdTip.setVisibility(View.GONE);
                             player.setPlaybackSpeed(normalSpeed);
-                        } else if (scrubbing) {
+                            holdTip.setVisibility(View.GONE);
+                        }
+                        seekTip.setVisibility(View.GONE);
+                        if (scrubbing) {
                             scrubbing = false;
                             showUi(true);
                         } else if (!moved && e.getEventTime() - e.getDownTime() < 300) {
