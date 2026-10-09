@@ -1,4 +1,4 @@
-﻿<!doctype html>
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -373,8 +373,11 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
 #pdfProg input{flex:1;-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;background:rgba(255,255,255,.3);outline:none}
 #pdfProg input::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:#fff;border:none}
 #pdfProg .pct{font-size:11px;color:#ddd;width:44px;text-align:right;flex:0 0 auto;font-variant-numeric:tabular-nums}
-#pdfBubble{position:absolute;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(6px);z-index:7;background:rgba(20,20,20,.92);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:7px 14px;font-size:12px;color:#eee;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s}
-#pdfBubble.on{opacity:1;transform:translateX(-50%) translateY(0)}
+#pdfBubble{position:absolute;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:7;display:none;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+#pdfBubble.on{display:flex}
+#pdfBubble .pvbox{max-width:52vw;max-height:42vh;border-radius:10px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.6);background:#111;display:flex;align-items:center;justify-content:center}
+#pdfBubble canvas{max-width:52vw;max-height:42vh;width:auto;height:auto;display:block}
+#pdfBubble span{font-size:12px;color:#eee;background:rgba(0,0,0,.7);padding:3px 12px;border-radius:14px;white-space:nowrap}
 #pdfOrient{position:absolute;right:10px;top:calc(60px + env(safe-area-inset-top));z-index:10;transition:opacity .2s}
 #pdfOrient.land{background:#fff}
 #pdfOrient svg{fill:#eee;stroke:none}
@@ -464,10 +467,10 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
   <div id="clearBox">
     <div id="clearTitle">清理缓存</div>
     <div id="clearHint">可分类清理；历史文件夹、授权与收藏始终保留</div>
-    <button class="citem" data-c="img">阅览器图片缓存</button>
+    <button class="citem" data-c="img">阅读器内容缓存</button>
     <button class="citem" data-c="tree">文件夹路径缓存</button>
     <button class="citem" data-c="hist">浏览历史缓存</button>
-    <button class="citem" data-c="reader">阅读器缓存</button>
+    <button class="citem" data-c="reader">个性设置缓存</button>
     <button class="citem danger" data-c="all">所有缓存</button>
     <button class="citem back" data-c="cancel">不清理，返回</button>
   </div>
@@ -693,7 +696,7 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
       <input type="range" id="pdfRange" min="0" max="1000" value="0">
       <span class="pct" id="pdfPct">0%</span>
     </div>
-    <div id="pdfBubble"></div>
+    <div id="pdfBubble"><div class="pvbox"><canvas id="pdfPrevCv"></canvas></div><span id="pdfPrevLabel"></span></div>
     <div id="pdfBot">
       <button class="vbtn" id="pdfPrev">
         <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
@@ -724,8 +727,8 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
         <li>长按任意子文件夹或 <kbd>.txt</kbd> 文本文档可收藏，在「收藏」页快速重开，再次长按取消；收藏内容属于其他文件夹时，App 自动切换授权树，网页版会重新请求一次文件夹权限</li>
         <li>授权丢失的历史文件夹、已被移动或删除的收藏会变成红底白字的「已失效」项，点击确认后即可删除；文件重新出现时会自动恢复正常</li>
         <li>网页版「收藏」页可导出收藏为 JSON 文件备份，也可从 JSON 导入，导入默认与现有收藏合并去重；跨文件夹的收藏打开时仍需重新授权一次<span class="tag-web">仅网页</span></li>
-        <li><kbd>清理缓存</kbd> 可分类清理：阅览器图片缓存（含离线网页临时文件）、文件夹路径缓存、阅读位置等浏览历史、阅读器个性设置，也可一键清理全部；历史文件夹、授权与收藏始终保留</li>
-        <li><kbd>上次浏览</kbd> 可直接回到最近一次访问的文件夹，并精确恢复到上次浏览的子目录；App 打开即自动恢复，网页版会先重新请求一次文件夹授权</li>
+        <li><kbd>清理缓存</kbd> 可分类清理：阅读器内容缓存（含离线网页临时文件）、文件夹路径缓存、阅读位置等浏览历史、个性设置，也可一键清理全部；历史文件夹、授权与收藏始终保留</li>
+        <li><kbd>上次浏览</kbd> 可直接回到最近一次访问的文件夹，并精确恢复到上次浏览的子目录；应用重启后停在主页，点「继续浏览」或「上次浏览」即可进入，网页版会先重新请求一次文件夹授权</li>
         <li>再次打开授权过的文件夹时先用本机索引秒进，随后在后台自动检查文件增删，有变化会提示「目录已更新」并保留当前位置；顶栏刷新键可立即手动更新</li>
       </ul>
     </div>
@@ -1662,7 +1665,7 @@ function renderRecords(){
     row.appendChild(b);row.appendChild(d);box.appendChild(row)
   })
 }
-// 分类清理：图片（含 MHT 临时归档）/ 文件夹树索引 / 阅读位置历史 / 阅读器个性设置；授权、历史文件夹、收藏保留
+// 分类清理：阅读器内容（含 MHT 临时归档）/ 文件夹树索引 / 阅读位置历史 / 个性设置；授权、历史文件夹、收藏保留
 function clearCacheImg(){
   releaseAll()
   if(AB)AB.clearCache()
@@ -1678,7 +1681,7 @@ function clearCacheTree(){
 function clearCacheHist(){
   localStorage.removeItem('vPos')
   Object.keys(localStorage).forEach(function(k){
-    if(k.slice(0,3)==='ld:'||k.slice(0,6)==='nvpos:'||k.slice(0,7)==='pdfpos:')localStorage.removeItem(k)
+    if(k.slice(0,3)==='ld:'||k.slice(0,6)==='nvpos:'||k.slice(0,7)==='pdfpos:'||k.slice(0,5)==='pdfh:')localStorage.removeItem(k)
   })
 }
 var READER_CACHE_KEYS=['vMode','vStrip','vWake','vHinted','nvSet','nvWake','vpSpeed','vpHoldSpeed','pdfSet','pdfWake']
@@ -1687,10 +1690,10 @@ function clearCacheReader(){
   if(AB)AB.clearReaderPrefs()
 }
 function runClearCache(which){
-  if(which==='img'){clearCacheImg();toast('阅览器图片缓存已清理')}
+  if(which==='img'){clearCacheImg();toast('阅读器内容缓存已清理')}
   else if(which==='tree'){clearCacheTree();toast('文件夹索引已清理，下次打开将重新读取')}
   else if(which==='hist'){clearCacheHist();toast('阅读位置与浏览记录已清理')}
-  else if(which==='reader'){clearCacheReader();toast('阅读器个性设置已重置')}
+  else if(which==='reader'){clearCacheReader();toast('个性设置缓存已清理')}
   else if(which==='all'){clearCacheImg();clearCacheTree();clearCacheHist();clearCacheReader();toast('所有缓存已清理')}
 }
 // 同步原生返回键：当前界面按返回是否还留在 App 内
@@ -2133,14 +2136,9 @@ if(AB){
   $('wDesc').textContent='选择手机上的一个文件夹开始浏览'
   $('wCredit').textContent='by LCTech'
   renderRecords()
-  if(AB.hasSavedTree()){
-    // 最近记录已失效（文件夹被删或授权丢失）则不自动进入，留在主页显示红色失效项
-    var u0=AB.latestUri()
-    if(deadRecList().indexOf(u0)>=0||AB.uriAlive(u0)===false)syncBack()
-    else{beginLoad();$('bartext').textContent='正在读取目录…';AB.loadSaved()}
-  }else{
-    syncBack()
-  }
+  // 冷启动（删后台重开）固定回主页，不自动跳进最近根目录；需要时点主页"继续浏览"
+  // 切后台再回来时进程与 WebView 仍在，页面原样保留，不受此分支影响
+  syncBack()
   $('wHint').textContent='选择手机上的一个文件夹，授权后自动记住，可在记录列表中删除'
 }else{
   $('wDesc').textContent='选择本地文件夹开始浏览，文件不会被上传'
@@ -3765,16 +3763,41 @@ function closeNovel(push){
 
 // ============ PDF 阅读器（pdf.js legacy，仅 App；px/py 原生吸附整页 + sy 条漫连续，交互与图片阅读器一致） ============
 var pdfOn=false,pdfItem=null,pdfDoc=null,pdfNum=0,pdfTok=0
-var pdfMode='ud',pdfStrip=true,pdfReady=false,pdfLand=false,pdfUI=true
-var pdfMeta=[],pdfPageProms=[],pdfUnits=[],pdfOrder=[],pdfTasks={}
+var pdfMode='ud',pdfStrip=true,pdfLand=false,pdfUI=true
+var pdfMeta=[],pdfPageProms=[],pdfUnits=[],pdfOrder=[],pdfOrderInv=[],pdfTasks={}
 var pdfOff=[]
 var pdfCur=0,pdfSaveT=0,pdfGap=0
 var pdfRenderActive=0,pdfRenderQueue=[]
-var PDF_MAX_CONCURRENT=2
+// 条漫要形成向下提前量，中档以上并发3，低档机2；整页2即可
+function pdfMaxConc(){return pdfIsStrip?(pdfMemTier===0?2:3):2}
 var pdfScale=1
 var pdfObserver=null,pdfTrackRaf=0
 var pdfBox=$('pdfr'),pdfScrollEl=$('pdfScroll'),pdfLoadingEl=$('pdfLoading')
 var pdfDPR=Math.min(2,window.devicePixelRatio||1)
+// 设备内存分档：低档收窄预读与保留窗口、降并发，缓解中端机 canvas 常驻内存压力
+// navigator.deviceMemory 缺失的部分 WebView 按中档处理
+var pdfMemTier=(function(){
+  var m=navigator.deviceMemory
+  if(!m)return 1
+  return m<=2?0:(m<=4?1:2)
+})()
+// 单维 GPU 纹理上限：老机常见 4096，近年机型多为 8192；超限 canvas 整页空白
+var pdfMaxCanvasPx=pdfMemTier===0?4096:8192
+// pf/pb 前进与后退预读屏数，kf/kb 前进与后退保留屏数（中档为原默认值）
+var PDF_WIN=pdfMemTier===0
+  ?{pf:1.4,pb:0.6,kf:2.5,kb:2}
+  :(pdfMemTier===1?{pf:2.2,pb:0.9,kf:4,kb:3}:{pf:2.6,pb:1.1,kf:5,kb:4})
+// CSS 显示尺寸不动，仅压缩像素缓冲，保证最长边不撞 GPU 纹理上限
+function pdfEffDpr(cw,ch){
+  var f=Math.min(pdfMaxCanvasPx/Math.max(1,cw),pdfMaxCanvasPx/Math.max(1,ch))
+  return Math.min(pdfDPR,f)
+}
+// 滚动方向：+1 向下/前进，-1 向上；渲染预读预算压向前进方向
+var pdfDir=1,pdfLastPos=0
+// 条漫页高：pdfRatio 为真实高宽比，pdfReal 标记已拿到真实尺寸；未拿到的用 pdfEst 估算
+var pdfRatio=[],pdfReal=[],pdfEst=1.414,pdfHFlush=0,pdfReady=false
+// 进度条拖动中：不跳转、不被滚动跟踪抢滑块；气泡内低分辨率预览目标页
+var pdfDrag=false,pdfPrevTask=null,pdfPrevTimer=0,pdfPrevTok=0
 // paged 缩放（px/py），条漫缩放走 pdfScale 烘焙
 var PZ={s:1,tx:0,ty:0,base:null}
 var PG={mode:'none',sx:0,sy:0,psx:0,psy:0,moved:false,t:0,d0:0,s0:1,fx:0,fy:0,sprev:1}
@@ -3813,8 +3836,9 @@ function openPdf(item){
   if(!AB){toast('PDF 仅在安卓 App 内支持阅读');return}
   pdfItem=item;pdfOn=true;pdfTok++
   var tok=pdfTok
-  pdfDoc=null;pdfNum=0;pdfMeta=[];pdfPageProms=[];pdfUnits=[];pdfOrder=[];pdfTasks={}
+  pdfDoc=null;pdfNum=0;pdfMeta=[];pdfPageProms=[];pdfUnits=[];pdfOrder=[];pdfOrderInv=[];pdfTasks={}
   pdfReady=false;pdfScale=1;pdfCur=0;PZ={s:1,tx:0,ty:0,base:null}
+  pdfHeightsSaved=false;pdfLARunning=false;pdfDir=1;pdfLastPos=0;pdfDrag=false
   $('pdfName').textContent=item.name||''
   var st=pdfLoadSet();pdfMode=st.mode;pdfStrip=st.strip
   pdfApplyModeUI()
@@ -3827,17 +3851,22 @@ function openPdf(item){
   var saved=parseInt(localStorage.getItem('pdfpos:'+pdfPosKey()),10)
   var startIdx=isFinite(saved)?saved:0
   ensurePdfLib().then(function(lib){
-    // range 走 206 分片按需读取；disableAutoFetch 不预取不可见页数据，首屏与滚动都更省
+    // range 走 206 分片按需读取；本地虚拟主机单分片 512K，大图片页(均 1MB+)只需 2~3 次往返；
+    // disableAutoFetch 不预取不可见页数据，预读由渲染窗口驱动
     return lib.getDocument({url:item.vurl,cMapUrl:'pdfjs/cmaps/',cMapPacked:true,
       standardFontDataUrl:'pdfjs/standard_fonts/',isEvalSupported:false,
-      disableRange:false,disableAutoFetch:true}).promise
+      disableRange:false,disableAutoFetch:true,rangeChunkSize:524288}).promise
   }).then(function(doc){
     if(tok!==pdfTok||!pdfOn){try{doc.destroy()}catch(e){}return}
     pdfDoc=doc;pdfNum=doc.numPages
     pdfCur=Math.max(0,Math.min(pdfNum-1,startIdx))
-    pdfBuild(pdfCur)
-    // 元数据预取延后，让首屏可视页先渲染；它只用于条漫精确撑高，不阻塞看页
-    setTimeout(function(){if(tok===pdfTok)pdfPrefetchMeta(tok)},200)
+    pdfRatio=[];pdfReal=[];pdfEst=1.414;pdfPageProms=[]
+    pdfInitHeights(tok).then(function(){
+      if(tok!==pdfTok||!pdfOn)return
+      pdfReady=true
+      pdfBuild(pdfCur)
+      pdfLoadingEl.style.display='none'
+    })
   }).catch(function(){
     if(tok===pdfTok&&pdfOn){
       pdfLoadingEl.textContent='PDF 打开失败'
@@ -3845,26 +3874,135 @@ function openPdf(item){
     }
   })
 }
-// 顺序预取每页尺寸，供条漫撑高；每 16 页批量落位
-function pdfPrefetchMeta(tok){
-  var idx=0
-  function loop(){
-    if(tok!==pdfTok||!pdfDoc)return
-    if(idx>=pdfNum){pdfReady=true;pdfStripApplyWidths();pdfLoadingEl.style.display='none';return}
-    var cur=idx++
-    pdfGetPage(cur).then(function(page){
-      if(tok!==pdfTok)return
-      var vp=page.getViewport({scale:1})
-      var was=!pdfMeta[cur]
-      pdfMeta[cur]={w:vp.width,h:vp.height}
-      if(was&&(cur%16===0||cur>=pdfNum-1))pdfStripApplyWidths()
-      if(cur%32===0)pdfLoadingEl.textContent='正在排版… '+Math.round((cur+1)/pdfNum*100)+'%'
-      loop()
-    }).catch(function(){if(tok===pdfTok){pdfMeta[cur]={w:1,h:1.414};loop()}})
+// ---- 条漫页高：尽量真实。优先用上次阅读缓存的全量页高比；否则先取前 5 页（封面比例可能不同），
+//      其余页在滚动前方低优先级预取、或渲染时回填；未知页取已知真实页中的众数版式
+//      （正文页 mediabox 尺寸一致，封面/插页是少数异类；前 5 页全不同时信靠后的第 5 页）----
+function pdfHeightsKey(){return'pdfh:'+pdfPosKey()}
+function pdfRatioAt(i){return pdfReal[i]?pdfRatio[i]:pdfEst}
+function pdfRecomputeEst(){
+  // 比例量化到 0.001 分桶：同一版式页面尺寸完全相同，不同版式差异远大于此
+  var bk={},best=null
+  for(var i=0;i<pdfRatio.length;i++)if(pdfReal[i]){
+    var key=Math.round(pdfRatio[i]*1000)
+    var b=bk[key]||(bk[key]={s:0,c:0})
+    b.s+=pdfRatio[i];b.c++
+    // 平票时让靠后出现的版式赢：封面/目录异类多在开头
+    if(!best||b.c>=best.c)best=b
   }
-  loop()
+  if(best&&best.c>=2){pdfEst=best.s/best.c;return}
+  var K=Math.min(5,pdfRatio.length)
+  if(K&&pdfReal[K-1]){pdfEst=pdfRatio[K-1];return}
+  if(best)pdfEst=best.s/best.c
 }
-// 条漫固定 px 宽度链：缩放烘焙后重算页高；与图片阅读器 stripApplyWidth 同理
+function pdfLoadHeightCache(){
+  try{
+    var d=JSON.parse(localStorage.getItem(pdfHeightsKey())||'null')
+    if(d&&d.v===2&&d.n===pdfNum&&d.r&&d.r.length===pdfNum){
+      // v2：r 中只有真实测量位是数值，估算位为 null，绝不把估算固化成真实
+      for(var i=0;i<pdfNum;i++){
+        if(typeof d.r[i]==='number'){pdfRatio[i]=d.r[i];pdfReal[i]=true}
+      }
+      pdfRecomputeEst()
+      // 部分真实也算命中：估算位继续交给前向预取补
+      return true
+    }
+  }catch(e){}
+  return false
+}
+var pdfHeightsSaved=false,pdfHeightsLastSave=0
+function pdfSaveHeights(force){
+  if(pdfHeightsSaved)return
+  var now=Date.now()
+  // 增量写节流 800ms，避免快速滑动时每页都全量序列化
+  if(!force&&now-pdfHeightsLastSave<800)return
+  var c=0;for(var i=0;i<pdfNum;i++)if(pdfReal[i])c++
+  if(!force&&c<Math.min(5,pdfNum))return
+  var r=new Array(pdfNum),all=true
+  for(var j=0;j<pdfNum;j++){
+    if(pdfReal[j])r[j]=Math.round(pdfRatio[j]*10000)/10000
+    else{r[j]=null;all=false}
+  }
+  try{
+    localStorage.setItem(pdfHeightsKey(),JSON.stringify({v:2,n:pdfNum,r:r}))
+    pdfHeightsLastSave=now
+    // 全真实后不再重复写；部分真实时滚动中持续增量覆盖
+    if(all)pdfHeightsSaved=true
+  }catch(e){}
+}
+function pdfInitHeights(tok){
+  if(pdfLoadHeightCache())return Promise.resolve()
+  // 无缓存：只阻塞等待首屏页（可能是恢复阅读的中段页）尺寸，拿到立刻放行构建；
+  // 前 5 页其余页并行补，凑众数，不拖首屏；失败也放行，渲染时自会重试
+  var K=Math.min(5,pdfNum)
+  var first=Math.max(0,Math.min(pdfNum-1,pdfCur))
+  function measure(p){
+    return pdfGetPage(p).then(function(pg){
+      if(tok!==pdfTok)return
+      var vp=pg.getViewport({scale:1})
+      pdfRatio[p]=vp.height/vp.width;pdfReal[p]=true
+      pdfRecomputeEst()
+      // 构建已完成的页才需要即时校正高度；构建前完成的会在 build 时直接采用
+      if(pdfReady)pdfHeightsKick()
+    }).catch(function(){})
+  }
+  return measure(first).then(function(){
+    for(var p=0;p<K;p++)if(p!==first&&!pdfReal[p])measure(p)
+  })
+}
+function pdfSetReal(i,w,h){
+  if(pdfReal[i]||!w)return
+  pdfRatio[i]=h/w;pdfReal[i]=true
+  pdfRecomputeEst()
+  pdfHeightsKick()
+  if(pdfIsStrip)pdfSaveHeights(false)
+}
+// 前向低优先级预取页高：只往当前位置前方约 20 页补真实尺寸，且每页让出一帧，绝不抢渲染
+var pdfLARunning=false
+function pdfLookAhead(){
+  if(!pdfIsStrip||pdfLARunning||!pdfReady||!pdfDoc)return
+  pdfLARunning=true
+  function step(){
+    if(!pdfOn||!pdfDoc){pdfLARunning=false;return}
+    var anchor=pdfOrderInv[pdfCur]
+    var target=-1
+    for(var d=1;d<=20;d++){
+      var k=anchor+d
+      if(k>=pdfNum)break
+      var ri=pdfOrder[k]
+      if(!pdfReal[ri]){target=ri;break}
+    }
+    if(target<0){pdfLARunning=false;pdfSaveHeights(false);return}
+    pdfGetPage(target).then(function(pg){
+      var vp=pg.getViewport({scale:1})
+      pdfSetReal(target,vp.width,vp.height)
+      // 让可视渲染优先：下一页高预取排到下一帧
+      requestAnimationFrame(function(){if(pdfRenderQueue.length||pdfRenderActive>=pdfMaxConc())setTimeout(step,90);else step()})
+    }).catch(function(){pdfLARunning=false})
+  }
+  step()
+}
+// 批量高度落位：改前记录当前页页内偏移，改完恢复，杜绝真实页高到位后内容跳位
+function pdfHeightsKick(){
+  if(!pdfIsStrip||pdfHFlush)return
+  pdfHFlush=requestAnimationFrame(function(){
+    pdfHFlush=0
+    if(!pdfIsStrip)return
+    var pos=pdfScrollEl.scrollTop
+    var aK=0
+    for(var k=0;k<pdfOff.length-1;k++){if(pdfOff[k]<=pos)aK=k;else break}
+    var inPage=pos-pdfOff[aK]
+    var W=Math.max(1,Math.round(pdfScrollEl.clientWidth*pdfScale))
+    for(var i=0;i<pdfUnits.length;i++){
+      var u=pdfUnits[i],h=Math.round(W*pdfRatioAt(i))
+      if(u.offsetHeight!==h)u.style.height=h+'px'
+    }
+    pdfCalcOff()
+    var nk=Math.min(aK,pdfOff.length-2)
+    pdfScrollEl.scrollTop=Math.max(0,pdfOff[nk]+inPage)
+    pdfLookAhead()
+  })
+}
+// 条漫固定 px 宽度链：缩放烘焙后全量重算页高；与图片阅读器 stripApplyWidth 同理
 function pdfStripApplyWidths(){
   if(!pdfIsStrip)return
   var wrap=document.getElementById('pdfStripWrap')
@@ -3872,24 +4010,28 @@ function pdfStripApplyWidths(){
   var W=Math.max(1,Math.round(pdfScrollEl.clientWidth*pdfScale))
   wrap.style.width=W+'px'
   for(var i=0;i<pdfUnits.length;i++){
-    var u=pdfUnits[i],m=pdfMeta[i]
+    var u=pdfUnits[i]
     u.style.width=W+'px'
-    u.style.height=(m?Math.round(W*m.h/m.w):Math.round(W*1.414))+'px'
+    u.style.height=Math.round(W*pdfRatioAt(i))+'px'
     var cv=u.querySelector('canvas');if(cv)cv.style.width=W+'px'
     if(u.dataset.z&&u.dataset.z!=='s'+pdfScale){
-      pdfCancelTask(i);u.removeAttribute('data-rd');u.removeAttribute('data-z')
-      var old=u.querySelector('canvas');if(old)old.remove()
+      pdfReleaseUnit(i)
     }
   }
-  // 同步偏移表，滚动跟踪/进度用它做索引，避免每帧读 offsetTop 强制布局
-  pdfRebuildOff()
+  pdfCalcOff()
   pdfScheduleRender()
 }
-// 由各单元当前高度重建条漫偏移表（含页间距）
-function pdfRebuildOff(){
-  if(!pdfIsStrip)return
-  pdfOff=[0];var acc=0
-  for(var q=0;q<pdfUnits.length;q++){acc+=pdfUnits[q].offsetHeight+pdfGap;pdfOff.push(acc)}
+// 偏移表：纯数学累加，不读 DOM。物理顺序（pdfOrder）累计，rl 同样适用
+function pdfCalcOff(){
+  var n=pdfUnits.length
+  pdfOff=new Array(n+1);pdfOff[0]=0
+  if(pdfIsStrip){
+    var W=Math.max(1,Math.round(pdfScrollEl.clientWidth*pdfScale))
+    for(var k=0;k<n;k++){var ri=pdfOrder[k];pdfOff[k+1]=pdfOff[k]+Math.round(W*pdfRatioAt(ri))+pdfGap}
+  }else{
+    var step=pdfIsX?(pdfScrollEl.clientWidth||window.innerWidth):pdfScrollEl.clientHeight
+    for(var p=1;p<=n;p++)pdfOff[p]=p*step
+  }
 }
 // 构建全部页单元；px/py 尺寸由 CSS 吸附，sy 用固定 px 高度
 function pdfBuild(cur){
@@ -3897,14 +4039,16 @@ function pdfBuild(cur){
   Object.keys(pdfTasks).forEach(function(k){pdfCancelTask(+k)})
   pdfRenderQueue.length=0;pdfRenderActive=0
   PZ={s:1,tx:0,ty:0,base:null}
+  pdfLARunning=false
   pdfIsX=pdfMode!=='ud'
   pdfIsStrip=pdfMode==='ud'&&pdfStrip
   pdfScrollEl.className=pdfIsX?'px':(pdfIsStrip?'sy':'py')
   pdfScrollEl.innerHTML=''
-  pdfUnits=[];pdfOrder=[]
+  pdfUnits=[];pdfOrder=[];pdfOrderInv=[]
   var n=pdfNum
   if(pdfIsX&&pdfMode==='rl'){for(var r=n-1;r>=0;r--)pdfOrder.push(r)}
   else{for(var f=0;f<n;f++)pdfOrder.push(f)}
+  for(var oi=0;oi<n;oi++)pdfOrderInv[pdfOrder[oi]]=oi
   var host=pdfScrollEl,frag=document.createDocumentFragment()
   var wrapEl=null
   if(pdfIsStrip){
@@ -3916,8 +4060,9 @@ function pdfBuild(cur){
     var u=document.createElement('div')
     u.className='pdfu '+(pdfIsX?'x':(pdfIsStrip?'ys':'yp'))
     u.dataset.i=String(i)
+    u._rt=0
     if(pdfIsStrip){
-      var m0=pdfMeta[i],h0=m0?Math.round(W0*m0.h/m0.w):Math.round(W0*1.414)
+      var h0=Math.round(W0*pdfRatioAt(i))
       u.style.width=W0+'px';u.style.height=h0+'px'
     }
     u._idx=i
@@ -3925,128 +4070,147 @@ function pdfBuild(cur){
     pdfUnits.push(u)
   }
   if(wrapEl){pdfScrollEl.appendChild(wrapEl)}else{pdfScrollEl.appendChild(frag)}
-  pdfStripApplyWidths()
-  var margin=pdfIsX?'0px 1600px':'1600px 0px'
+  pdfCalcOff()
+  // IO 只负责提前发现进入预读窗口的页；边距与分档预读屏数对齐，低档机 1200px
+  var ioPad=pdfMemTier===0?1200:(pdfMemTier===1?2400:3000)
+  var margin=pdfIsX?('0px '+ioPad+'px'):(ioPad+'px 0px')
   pdfObserver=new IntersectionObserver(function(es){
     es.forEach(function(en){
-      var i=en.target._idx
-      if(en.isIntersecting)pdfRenderUnit(i)
-      else if(Math.abs(i-pdfCur)>8)pdfReleaseUnit(i)
+      if(en.isIntersecting)pdfEnqueue(en.target._idx)
     })
   },{root:pdfScrollEl,rootMargin:margin})
   pdfUnits.forEach(function(u){pdfObserver.observe(u)})
-  // 整页/横向：每单元一屏，偏移表直接数学计算，跟踪页码零布局读取
-  if(!pdfIsStrip){
-    pdfOff=[0];var step=pdfIsX?(pdfScrollEl.clientWidth||window.innerWidth):pdfScrollEl.clientHeight
-    for(var p=1;p<=n;p++)pdfOff.push(p*step)
-  }
   requestAnimationFrame(function(){
     pdfScrollToUnit(cur,false)
-    pdfScheduleRender()
+    pdfRenderVisible()
+    pdfLookAhead()
   })
   pdfInfoUpd()
 }
-// 渲染单页 canvas：sy 按容器全宽*pdfScale；px/py 适应整屏。并发闸门限制同时解码数，滚动不卡
-function pdfRenderUnit(idx){
+// 渲染调度：像素窗口 + 滚动方向加权。条漫预读下方约 2.2 屏、上方 0.9 屏；
+// canvas 保留到 3~4 屏外才回收。队列项带渲染令牌，页被释放/重缩放后旧任务立即作废
+function pdfCurZkey(){return pdfIsStrip?'s'+pdfScale:'p'}
+function pdfEnqueue(idx){
   var u=pdfUnits[idx]
   if(!u)return
-  var zkey=pdfIsStrip?'s'+pdfScale:'p'
+  var zkey=pdfCurZkey()
   if(u.dataset.rd==='1'&&u.dataset.z===zkey)return
   if(u.dataset.q==='1')return
   u.dataset.q='1'
-  var go=function(){
-    pdfRenderActive++
-    var cv=u.querySelector('canvas')
-    if(!cv){cv=document.createElement('canvas');u.appendChild(cv)}
-    pdfGetPage(idx).then(function(page){
-      if(tok2!==pdfTok||!cv.isConnected||pdfUnits[idx]!==u){pdfDone();return}
-      // 等该页真实尺寸就绪，避免用 A4 估算比例渲染后再返工；元数据预取很快
-      var m=pdfMeta[idx]
-      if(!m){
-        // 元数据尚未到：直接由本渲染拿一次精确尺寸并回填，不依赖串行预取
-        var vp0=page.getViewport({scale:1})
-        m={w:vp0.width,h:vp0.height};pdfMeta[idx]=m
-      }
-      var s,cw,ch
-      if(pdfIsStrip){
-        var W=Math.max(1,Math.round((pdfScrollEl.clientWidth||window.innerWidth)*pdfScale))
-        s=W/m.w;cw=W;ch=Math.round(W*m.h/m.w)
-      }else{
-        var vw=pdfScrollEl.clientWidth||window.innerWidth
-        var vh=pdfScrollEl.clientHeight||window.innerHeight
-        s=Math.min(vw/m.w,vh/m.h)*0.97
-        cw=Math.round(m.w*s);ch=Math.round(m.h*s)
-      }
-      var vp=page.getViewport({scale:s*pdfDPR})
-      cv.width=Math.round(vp.width);cv.height=Math.round(vp.height)
-      cv.style.width=cw+'px';cv.style.height=ch+'px'
-      // 条漫：渲染拿到真实比例后校准该页撑高；仅高度变化时才重建偏移表
-      if(pdfIsStrip){
-        var realH=ch
-        if(u.offsetHeight!==realH){u.style.width=cw+'px';u.style.height=realH+'px';pdfRebuildOff()}
-      }
-      if(!pdfIsStrip)cv.style.transform=''
-      var task=page.render({canvasContext:cv.getContext('2d'),viewport:vp})
-      pdfTasks[idx]=task
-      u.dataset.z=zkey;u.dataset.rd='1'
-      return task.promise.then(function(){
-        pdfLoadingEl.style.display='none'
-        if(pdfTasks[idx]===task)delete pdfTasks[idx]
-      }).catch(function(){if(pdfTasks[idx]===task)delete pdfTasks[idx]})
-    }).catch(function(){}).then(function(){
-      u.removeAttribute('data-q');pdfDone()
-    })
-  }
-  var tok2=pdfTok
-  if(pdfRenderActive>=PDF_MAX_CONCURRENT){go._d=Math.abs(idx-pdfCur);pdfRenderQueue.push(go);return}
-  go()
+  var item={i:idx,rt:++u._rt}
+  if(pdfRenderActive>=pdfMaxConc())pdfRenderQueue.push(item)
+  else pdfStartRender(item)
 }
-function pdfDone(){
-  pdfRenderActive=Math.max(0,pdfRenderActive-1)
-  // 先渲染当前页，再按距离当前页远近消费队列，快速滑动时远处页让路
-  if(pdfRenderQueue.length){
-    var best=0,bestD=1e9
-    for(var i=0;i<pdfRenderQueue.length;i++){
-      var d=pdfRenderQueue[i]._d
-      if(d<bestD){bestD=d;best=i}
+function pdfStartRender(it){
+  var idx=it.i,u=pdfUnits[idx]
+  if(!u||u._rt!==it.rt||u.dataset.q!=='1'){pdfPump();return}
+  pdfRenderActive++
+  var tok2=pdfTok,zkey=pdfCurZkey()
+  var cv=u.querySelector('canvas')
+  if(!cv){cv=document.createElement('canvas');u.appendChild(cv)}
+  pdfGetPage(idx).then(function(page){
+    if(tok2!==pdfTok||u._rt!==it.rt||!cv.isConnected||pdfUnits[idx]!==u){pdfPump();return}
+    var vp0=page.getViewport({scale:1})
+    var m={w:vp0.width,h:vp0.height}
+    var s,cw,ch
+    if(pdfIsStrip){
+      var W=Math.max(1,Math.round((pdfScrollEl.clientWidth||window.innerWidth)*pdfScale))
+      s=W/m.w;cw=W;ch=Math.round(W*m.h/m.w)
+      pdfSetReal(idx,m.w,m.h)
+    }else{
+      var vw=pdfScrollEl.clientWidth||window.innerWidth
+      var vh=pdfScrollEl.clientHeight||window.innerHeight
+      s=Math.min(vw/m.w,vh/m.h)*0.97
+      cw=Math.round(m.w*s);ch=Math.round(m.h*s)
     }
-    var fn=pdfRenderQueue.splice(best,1)[0]
-    fn()
+    // 拼接长页按 CSS 尺寸算出不撞 GPU 上限的有效 DPR，style 尺寸保持 cw/ch 不变
+    var ed=pdfEffDpr(cw,ch)
+    var vp=page.getViewport({scale:s*ed})
+    cv.width=Math.round(vp.width);cv.height=Math.round(vp.height)
+    cv.style.width=cw+'px';cv.style.height=ch+'px'
+    if(!pdfIsStrip)cv.style.transform=''
+    var task=page.render({canvasContext:cv.getContext('2d'),viewport:vp})
+    pdfTasks[idx]=task
+    u.dataset.z=zkey;u.dataset.rd='1'
+    return task.promise.then(function(){
+      pdfLoadingEl.style.display='none'
+      if(pdfTasks[idx]===task)delete pdfTasks[idx]
+    }).catch(function(){if(pdfTasks[idx]===task)delete pdfTasks[idx]})
+  }).catch(function(){}).then(function(){
+    if(u&&u._rt===it.rt)u.removeAttribute('data-q')
+    pdfPump()
+  })
+}
+// 当前物理位置与保留窗口；队列消费时实时重算，快速甩动后旧目标自动让路
+function pdfAnchorK(){
+  var pos=pdfIsX?pdfScrollEl.scrollLeft:pdfScrollEl.scrollTop,k=0
+  for(;k<pdfOff.length-1;k++){if(pdfOff[k+1]>pos)break}
+  return Math.min(k,pdfOff.length-2)
+}
+function pdfInKeep(physK){
+  var pos=pdfIsX?pdfScrollEl.scrollLeft:pdfScrollEl.scrollTop
+  var size=pdfIsX?pdfScrollEl.clientWidth:pdfScrollEl.clientHeight
+  var lo=pos-(pdfDir>0?PDF_WIN.kb:PDF_WIN.kf)*size,hi=pos+size+(pdfDir>0?PDF_WIN.kf:PDF_WIN.kb)*size
+  var o0=pdfOff[physK],o1=pdfOff[Math.min(physK+1,pdfOff.length-1)]
+  return o1>lo&&o0<hi
+}
+function pdfPump(){
+  pdfRenderActive=Math.max(0,pdfRenderActive-1)
+  while(pdfRenderQueue.length&&pdfRenderActive<pdfMaxConc()){
+    var anchor=pdfAnchorK(),best=-1,bestC=1e18
+    for(var qi=0;qi<pdfRenderQueue.length;qi++){
+      var it=pdfRenderQueue[qi],u=pdfUnits[it.i]
+      if(!u||u._rt!==it.rt||u.dataset.q!=='1'){best=qi;bestC=-1;break}
+      if(u.dataset.rd==='1'&&u.dataset.z===pdfCurZkey()){best=qi;bestC=-1;break}
+      var d=pdfOrderInv[it.i]-anchor
+      if(d*pdfDir>0)d=Math.abs(d)*0.55;else d=Math.abs(d)*1.25
+      if(d<bestC){bestC=d;best=qi}
+    }
+    var pick=pdfRenderQueue.splice(best,1)[0],pu=pdfUnits[pick.i]
+    // 已完成或作废：清标志；已滚出保留窗口的排队任务直接丢弃，不白解码
+    if(pu&&(pu._rt!==pick.rt||(pu.dataset.rd==='1'&&pu.dataset.z===pdfCurZkey())||!pdfInKeep(pdfOrderInv[pick.i]))){
+      if(pu&&pu._rt===pick.rt)pu.removeAttribute('data-q')
+      continue
+    }
+    pdfStartRender(pick)
   }
 }
 function pdfReleaseUnit(idx){
-  pdfCancelTask(idx)
   var u=pdfUnits[idx]
   if(!u)return
-  u.removeAttribute('data-rd');u.removeAttribute('data-z')
+  u._rt++
+  u.removeAttribute('data-q');u.removeAttribute('data-rd');u.removeAttribute('data-z')
+  pdfCancelTask(idx)
   var cv=u.querySelector('canvas');if(cv)cv.remove()
 }
 function pdfScheduleRender(){if(!pdfWinRaf2)pdfWinRaf2=requestAnimationFrame(function(){pdfWinRaf2=0;pdfRenderVisible()})}
 var pdfWinRaf2=0
-// 用偏移表二分定位可见页区间，零 offsetTop 读取；区间外已渲染的延迟释放（避免来回滑动反复解码）
-function pdfVisiblePageRange(pad){
+// 物理序号区间：窗口按滚动方向不对称，前进方向预读更远，形成连续滚动的提前量
+function pdfPhysRange(backPad,frontPad){
   var pos=pdfIsX?pdfScrollEl.scrollLeft:pdfScrollEl.scrollTop
   var size=pdfIsX?pdfScrollEl.clientWidth:pdfScrollEl.clientHeight
-  var lo=pos-pad,hi=pos+size+pad,s=0,e=Math.max(0,pdfOff.length-2)
-  while(s<e&&pdfOff[s+1]<=lo)s++
-  e=s
-  while(e<pdfOff.length-2&&pdfOff[e]<hi)e++
-  return [s,e]
+  var lo=pos-backPad,hi=pos+size+frontPad,a=0,b=pdfOff.length-2
+  while(a<b&&pdfOff[a+1]<=lo)a++
+  b=a
+  while(b<pdfOff.length-2&&pdfOff[b]<hi)b++
+  return [a,b]
 }
 function pdfRenderVisible(){
   if(!pdfUnits.length||!pdfOff.length)return
-  var pad=(pdfIsX?pdfScrollEl.clientWidth:pdfScrollEl.clientHeight)*1.5
-  var r=pdfVisiblePageRange(pad)
-  // 可视区内：按距当前页远近顺序入渲染，当前页最先
-  var idxs=[]
-  for(var i=r[0];i<=r[1];i++)idxs.push(i)
-  idxs.sort(function(a,b){return Math.abs(a-pdfCur)-Math.abs(b-pdfCur)})
-  idxs.forEach(pdfRenderUnit)
-  // 超出更大范围（保留两屏缓冲）才释放
-  var keep=pdfVisiblePageRange(pad+ (pdfIsX?pdfScrollEl.clientWidth:pdfScrollEl.clientHeight))
+  var size=pdfIsX?pdfScrollEl.clientWidth:pdfScrollEl.clientHeight
+  var back=size*(pdfDir>0?PDF_WIN.pb:PDF_WIN.pf),front=size*(pdfDir>0?PDF_WIN.pf:PDF_WIN.pb)
+  var r=pdfPhysRange(back,front)
+  for(var k=r[0];k<=r[1];k++)pdfEnqueue(pdfOrder[k])
+  // 保留窗口外的已渲染/排队页回收（排队的作废令牌即可，不取消已发出的数据请求）
+  var keep=pdfPhysRange(size*(pdfDir>0?PDF_WIN.kb:PDF_WIN.kf),size*(pdfDir>0?PDF_WIN.kf:PDF_WIN.kb))
   for(var j=0;j<pdfUnits.length;j++){
-    if((j<keep[0]||j>keep[1])&&pdfUnits[j].dataset.rd)pdfReleaseUnit(j)
+    var pk=pdfOrderInv[j]
+    if(pk<keep[0]||pk>keep[1]){
+      if(pdfUnits[j].dataset.rd)pdfReleaseUnit(j)
+      else if(pdfUnits[j].dataset.q==='1'){pdfUnits[j]._rt++;pdfUnits[j].removeAttribute('data-q')}
+    }
   }
+  pdfLookAhead()
 }
 // 当前页：偏移表二分（O(logN)），零布局读取；rl 物理顺序反向但 pdfCur 仍是真实页码
 function pdfTrackCurrent(){
@@ -4057,6 +4221,7 @@ function pdfTrackCurrent(){
     var pos=pdfIsX?pdfScrollEl.scrollLeft:pdfScrollEl.scrollTop
     var size=pdfIsX?pdfScrollEl.clientWidth:pdfScrollEl.clientHeight
     var full=pdfIsX?pdfScrollEl.scrollWidth:pdfScrollEl.scrollHeight
+    if(Math.abs(pos-pdfLastPos)>2){pdfDir=pos>pdfLastPos?1:-1;pdfLastPos=pos}
     var idx
     if(pdfIsX&&pdfMode==='rl'){
       // rl：DOM 物理倒序，真实页码 idx 对应左边缘位置 (n-1-idx)*屏宽；
@@ -4076,7 +4241,7 @@ function pdfTrackCurrent(){
       if(!pdfIsStrip)pdfResetZoom()
       pdfInfoUpd()
     }
-    pdfRangeUpd(pdfCur/Math.max(1,pdfNum-1))
+    if(!pdfDrag)pdfRangeUpd(pdfCur/Math.max(1,pdfNum-1))
   })
 }
 pdfScrollEl.addEventListener('scroll',function(){pdfTrackCurrent();pdfScheduleRender();pdfSavePosSoon()},{passive:true})
@@ -4112,19 +4277,49 @@ function pdfRangeUpd(frac){
   $('pdfPct').textContent=Math.round(frac*100)+'%'
 }
 function pdfPageAtFrac(frac){return Math.round(frac*Math.max(0,pdfNum-1))+1}
-function pdfShowBubble(){
-  $('pdfBubble').textContent='第 '+pdfPageAtFrac((parseInt($('pdfRange').value,10)||0)/1000)+' 页 / 共 '+pdfNum+' 页'
-  $('pdfBubble').classList.add('on');clearTimeout(pdfBubT)
+// 拖动中在气泡内低分辨率渲染目标页；此渲染会让 pdf.js 缓存该页数据块，松手后整宽渲染更快
+function pdfCancelPreview(){
+  pdfPrevTok++
+  if(pdfPrevTask){try{pdfPrevTask.cancel()}catch(e){}pdfPrevTask=null}
+  clearTimeout(pdfPrevTimer)
 }
-function pdfHideBubble(){clearTimeout(pdfBubT);pdfBubT=setTimeout(function(){$('pdfBubble').classList.remove('on')},350)}
-$('pdfRange').addEventListener('pointerdown',pdfShowBubble)
-window.addEventListener('pointerup',pdfHideBubble)
-$('pdfRange').addEventListener('input',pdfShowBubble)
-$('pdfRange').addEventListener('change',function(){
-  var f=(parseInt(this.value,10)||0)/1000
-  pdfScrollToUnit(pdfPageAtFrac(f)-1,false)
-  pdfHideBubble();pdfSavePosSoon()
-})
+function pdfShowPreview(){
+  if(!pdfNum)return
+  var pageIdx=pdfPageAtFrac((parseInt($('pdfRange').value,10)||0)/1000)-1
+  $('pdfPrevLabel').textContent='第 '+(pageIdx+1)+' 页 / 共 '+pdfNum+' 页'
+  $('pdfBubble').classList.add('on')
+  pdfCancelPreview()
+  var tok=pdfPrevTok
+  pdfPrevTimer=setTimeout(function(){
+    if(!pdfOn||tok!==pdfPrevTok||!pdfDoc)return
+    var cv=$('pdfPrevCv')
+    pdfGetPage(pageIdx).then(function(page){
+      if(tok!==pdfPrevTok)return
+      var v1=page.getViewport({scale:1})
+      var sc=Math.min(Math.min(220,window.innerWidth*0.52)/v1.width,(window.innerHeight*0.42)/v1.height)
+      var vp=page.getViewport({scale:sc})
+      cv.width=Math.round(vp.width);cv.height=Math.round(vp.height)
+      cv.style.width=cv.width+'px';cv.style.height=cv.height+'px'
+      var task=page.render({canvasContext:cv.getContext('2d'),viewport:vp})
+      pdfPrevTask=task
+      task.promise.then(function(){if(pdfPrevTask===task)pdfPrevTask=null}).catch(function(){})
+    }).catch(function(){})
+  },90)
+}
+function pdfEndDrag(){
+  if(!pdfDrag)return
+  pdfDrag=false
+  var f=(parseInt($('pdfRange').value,10)||0)/1000
+  var target=pdfPageAtFrac(f)-1
+  pdfCancelPreview()
+  $('pdfBubble').classList.remove('on')
+  pdfScrollToUnit(target,false)
+  pdfSavePosSoon()
+}
+$('pdfRange').addEventListener('pointerdown',function(){pdfDrag=true;pdfShowPreview()})
+$('pdfRange').addEventListener('input',pdfShowPreview)
+$('pdfRange').addEventListener('change',pdfEndDrag)
+window.addEventListener('pointerup',pdfEndDrag)
 function pdfSavePosSoon(){clearTimeout(pdfSaveT);pdfSaveT=setTimeout(pdfSavePos,350)}
 function pdfSavePos(){
   if(!pdfOn||!pdfItem||!pdfNum)return
@@ -4335,12 +4530,15 @@ window.addEventListener('resize',function(){
 function closePdf(push){
   if(!pdfOn)return
   pdfSavePos()
+  pdfSaveHeights(true)
   pdfTok++;pdfOn=false
+  pdfCancelPreview();pdfDrag=false
   if(pdfObserver){pdfObserver.disconnect();pdfObserver=null}
   Object.keys(pdfTasks).forEach(function(k){pdfCancelTask(+k)})
-  pdfRenderQueue.length=0;pdfRenderActive=0
+  pdfRenderQueue.length=0;pdfRenderActive=0;pdfLARunning=false
   clearTimeout(pdfSaveT);clearTimeout(pdfTapTask);clearTimeout(pdfBubT)
-  cancelAnimationFrame(pdfTrackRaf);cancelAnimationFrame(pdfZRaf);cancelAnimationFrame(pdfWinRaf2)
+  cancelAnimationFrame(pdfTrackRaf);cancelAnimationFrame(pdfZRaf);cancelAnimationFrame(pdfWinRaf2);cancelAnimationFrame(pdfHFlush)
+  $('pdfBubble').classList.remove('on')
   pdfOff=[]
   if(pdfDoc){try{pdfDoc.destroy()}catch(e){}pdfDoc=null}
   pdfBox.classList.remove('on','ui-off')

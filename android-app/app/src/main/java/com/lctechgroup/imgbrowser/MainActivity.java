@@ -27,6 +27,7 @@ import android.webkit.WebViewClient;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
@@ -67,6 +68,9 @@ public class MainActivity extends Activity {
     // 扫描代次：每次发起扫描加 1，用户取消也加 1；任务发现代次过期立即收工，
     // 不再提交子目录、不写缓存不回调，避免取消后 io 线程与 4 路扫描池继续空转
     private volatile int scanGen = 0;
+    // 文件真实大小按文档 id 缓存：PDF range 模式每个 206 分片都要回一次长度，
+    // 省掉重复 openFileDescriptor 的 binder 往返；只缓存正数结果
+    private final android.util.LruCache<String, Long> sizeCache = new android.util.LruCache<>(256);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,7 +114,20 @@ public class MainActivity extends Activity {
     }
 
     // 用 openFileDescriptor 的 statSize 拿真实大小，比 openAssetFileDescriptor 可靠
-    private long queryDocSize(Uri doc) {
+    private long queryDocSize(Uri doc, String id) {
+        if (id != null) {
+            Long cached = sizeCache.get(id);
+            if (cached != null) {
+                return cached;
+            }
+        }
+        long s = queryDocSizeUncached(doc);
+        if (s > 0 && id != null) {
+            sizeCache.put(id, s);
+        }
+        return s;
+    }
+    private long queryDocSizeUncached(Uri doc) {
         ParcelFileDescriptor pfd = null;
         try {
             pfd = getContentResolver().openFileDescriptor(doc, "r");
@@ -167,7 +184,7 @@ public class MainActivity extends Activity {
                 mime = "application/octet-stream";
             }
             // 直接以普通文件方式打开，base=0，再取一次真实长度
-            long total = queryDocSize(doc);
+            long total = queryDocSize(doc, id);
             afd = getContentResolver().openAssetFileDescriptor(doc, "r");
             if (afd == null) {
                 return emptyResponse();
@@ -175,6 +192,7 @@ public class MainActivity extends Activity {
             long declared = afd.getDeclaredLength();
             if (declared > 0) {
                 total = declared;
+                sizeCache.put(id, total);
             }
             final long baseOff = afd.getStartOffset();
             final long totalLen = total;
@@ -194,8 +212,13 @@ public class MainActivity extends Activity {
             // 没有可靠长度或无 Range：从 0 给流，交给内核处理
             if (totalLen <= 0 || range == null || !range.startsWith("bytes=")) {
                 fis.getChannel().position(baseOff);
+                long lim = totalLen > 0 ? totalLen : Long.MAX_VALUE;
+                if (totalLen > 0) {
+                    // 显式长度便于内核写入 HTTP 缓存，回滚重看不重复走 SAF
+                    headers.put("Content-Length", String.valueOf(totalLen));
+                }
                 return new WebResourceResponse(mime, null, 200, "OK", headers,
-                        new BoundedInputStream(fis, totalLen > 0 ? totalLen : Long.MAX_VALUE, afd));
+                        new BoundedInputStream(new BufferedInputStream(fis, 65536), lim, afd));
             }
             String spec = range.substring(6).trim();
             int dash = spec.indexOf('-');
@@ -225,9 +248,11 @@ public class MainActivity extends Activity {
             }
             long len = end - start + 1;
             headers.put("Content-Range", "bytes " + start + "-" + end + "/" + totalLen);
+            // 206 带明确 Content-Length，内核才能正确缓存分片，回滚重看直接命中
+            headers.put("Content-Length", String.valueOf(len));
             fis.getChannel().position(baseOff + start);
             return new WebResourceResponse(mime, null, 206, "Partial Content", headers,
-                    new BoundedInputStream(fis, len, afd));
+                    new BoundedInputStream(new BufferedInputStream(fis, 65536), len, afd));
         } catch (Exception e) {
             if (afd != null) {
                 try {
