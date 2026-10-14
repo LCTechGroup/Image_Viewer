@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -166,7 +166,14 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
 #crumb span.cur{color:#fff}
 #crumb span.sep{color:#555;padding:0}
 #crumb span:not(.cur):not(.sep){color:#bbb}
-#grid{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));grid-auto-rows:var(--rh,118px);gap:10px;align-content:start;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+#grid{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));grid-auto-rows:var(--rh,118px);gap:10px;align-content:start;padding-bottom:calc(20px + env(safe-area-inset-bottom));scrollbar-width:none}
+#grid::-webkit-scrollbar{width:0;height:0}
+/* 右侧快速滚动条：静止不显示，滚动/拖动时半透明出现 */
+#fsb{position:fixed;right:3px;width:12px;z-index:28;display:none;opacity:0;transition:opacity .2s;pointer-events:none;touch-action:none}
+#fsb.show{opacity:1;pointer-events:auto}
+#fsbTrack{position:absolute;inset:0;border-radius:6px;background:rgba(255,255,255,.08)}
+#fsbThumb{position:absolute;left:1px;right:1px;top:0;min-height:26px;border-radius:5px;background:rgba(255,255,255,.45)}
+#fsb.drag #fsbThumb{background:rgba(255,255,255,.8)}
 .card{position:relative;border-radius:12px;overflow:hidden;background:#1c1c1c;min-height:0}
 .card:active{outline:2px solid #fff}
 .thumb{position:absolute;inset:0;background:#0a0a0a}
@@ -629,6 +636,7 @@ header{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:calc(8px + 
     <svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5.5 9.5V20h13V9.5M9.5 20v-6h5v6"/></svg>
   </button>
   <div id="grid"></div>
+  <div id="fsb"><div id="fsbTrack"><div id="fsbThumb"></div></div></div>
 
   <div id="searchBar">
     <input id="searchInput" type="text" placeholder="搜索，空格分隔多个关键词" enterkeyhint="search">
@@ -2118,6 +2126,53 @@ $('grid').addEventListener('scroll',function(){
   if(!fabTopRaf)fabTopRaf=requestAnimationFrame(syncFabTop)
 },{passive:true})
 $('fabTop').addEventListener('click',function(){$('grid').scrollTo({top:0,behavior:'smooth'})})
+// 右侧快速滚动条：位置/高度贴合网格可视区，内容不足一屏时隐藏；滚动或拖动时半透明出现
+var fsbEl=$('fsb'),fsbThumb=$('fsbThumb'),fsbHideT=0,fsbRAF=0,fsbDragging=false,fsbSuppress=false
+function fsbUpdate(){
+  var g=$('grid'),r=g.getBoundingClientRect()
+  var total=g.scrollHeight,view=g.clientHeight,max=Math.max(0,total-view)
+  fsbEl.style.top=r.top+'px';fsbEl.style.height=view+'px'
+  var can=max>4&&!$('app').classList.contains('hidden')
+  fsbEl.style.display=can?'block':'none'
+  if(!can)return
+  var h=Math.min(view,Math.max(26,Math.round(view*view/total)))
+  fsbThumb.style.height=h+'px'
+  fsbThumb.style.top=(max>0?(g.scrollTop/max*(view-h)):0)+'px'
+}
+function fsbLoop(){fsbUpdate();if(fsbEl.classList.contains('show')||fsbDragging)fsbRAF=requestAnimationFrame(fsbLoop);else fsbRAF=0}
+function fsbShow(){
+  if(fsbSuppress)return
+  fsbEl.classList.add('show');clearTimeout(fsbHideT)
+  if(!fsbDragging)fsbHideT=setTimeout(function(){fsbEl.classList.remove('show')},700)
+  if(!fsbRAF)fsbRAF=requestAnimationFrame(fsbLoop)
+}
+$('grid').addEventListener('scroll',function(){fsbUpdate();fsbShow()},{passive:true})
+window.addEventListener('resize',fsbUpdate)
+fsbEl.addEventListener('pointerdown',function(e){
+  e.preventDefault();e.stopPropagation()
+  var g=$('grid'),max=g.scrollHeight-g.clientHeight
+  if(max<=0)return
+  fsbDragging=true;fsbEl.classList.add('show','drag');clearTimeout(fsbHideT)
+  try{fsbEl.setPointerCapture(e.pointerId)}catch(err){}
+  var tr=fsbEl.getBoundingClientRect(),thumbH=fsbThumb.offsetHeight
+  // 点在滑杆空白处：直接跳到该比例并让滑块居中到触点；点在滑块上：按位移拖动
+  var onThumb=e.target===fsbThumb,startY=e.clientY,startTop=parseFloat(fsbThumb.style.top)||0
+  function move(cy){
+    var top=onThumb?startTop+(cy-startY):(cy-tr.top-thumbH/2)
+    top=Math.max(0,Math.min(tr.height-thumbH,top))
+    g.scrollTop=max*top/(tr.height-thumbH)
+    fsbUpdate()
+  }
+  move(e.clientY)
+  function mv(ev){move(ev.clientY)}
+  function up(){
+    fsbDragging=false;fsbEl.classList.remove('drag')
+    fsbEl.removeEventListener('pointermove',mv);fsbEl.removeEventListener('pointerup',up);fsbEl.removeEventListener('pointercancel',up)
+    clearTimeout(fsbHideT);fsbHideT=setTimeout(function(){fsbEl.classList.remove('show')},700)
+    if(!fsbRAF)fsbRAF=requestAnimationFrame(fsbLoop)
+  }
+  fsbEl.addEventListener('pointermove',mv);fsbEl.addEventListener('pointerup',up);fsbEl.addEventListener('pointercancel',up)
+})
 Array.prototype.forEach.call(document.querySelectorAll('#recTabs .rtab'),function(b){
   b.addEventListener('click',function(){recTab=b.getAttribute('data-t');renderRecords()})
 })
@@ -2934,6 +2989,7 @@ var filterPath=null,filterKinds=null,filterTags=null
 var FILT_DEFS=[['dir','文件夹'],['img','图片'],['video','视频'],['mht','离线网页'],['txt','文本文档'],['pdf','PDF']]
 function hasFilterTags(){return !!(filterTags&&filterTags.length)}
 function isFiltered(node){return !!node&&filterPath===node.path&&(!!filterKinds||hasFilterTags())}
+function resetGridFilters(){filterPath=null;filterKinds=null;filterTags=null}
 function filterMatch(f,k){
   return (!!k.img&&isImgName(f.name))||(!!k.video&&isVideoName(f.name))
     ||(!!k.mht&&isMhtName(f.name))||(!!k.txt&&isTxtName(f.name))
@@ -3023,21 +3079,25 @@ function renderGrid(node,focusPath){
   if(coverObserver)coverObserver.disconnect()
   if(coverReleaseObserver)coverReleaseObserver.disconnect()
   var g=$('grid');g.innerHTML='';g.scrollTop=0
-  if(focusPath&&isFiltered(node)){filterPath=null;filterKinds=null;filterTags=null}
+  // 重置换页会触发 scroll 事件，抑制快速滚动条在此刻闪现；两帧后解除并校正几何
+  fsbSuppress=true;fsbEl.classList.remove('show')
+  requestAnimationFrame(function(){requestAnimationFrame(function(){fsbSuppress=false;fsbUpdate()})})
+  // 搜索定位会主动关闭过滤；正常进入其他目录时也必须清掉旧目录的类别和标签过滤
+  if(focusPath||(filterPath&&filterPath!==node.path))resetGridFilters()
   $('fabTop').classList.add('hidden')
   $('fabShuffle').classList.toggle('on',isShuffled(node))
   var rnd=isShuffled(node)
-  var fk=isFiltered(node)?filterKinds:null
-  $('btnFilter').classList.toggle('on',isFiltered(node))
+  var filtered=isFiltered(node),fk=filtered?filterKinds:null
+  $('btnFilter').classList.toggle('on',filtered)
   // 文件夹始终作为第一大类排在文件之前；过滤关闭时全部显示
   var baseDirs=rnd?shuffleDirs:node.dirs
   var baseFiles=rnd?shuffleFiles:node.files
   var kindOk=function(x){return !fk||filterMatch(x,fk)}
   var viewDirs=baseDirs.filter(function(d){
     if(fk&&!fk.dir)return false
-    return tagMatchAll(d,true)
+    return !filtered||tagMatchAll(d,true)
   })
-  var viewFiles=baseFiles.filter(function(x){return kindOk(x)&&tagMatchAll(x,false)})
+  var viewFiles=baseFiles.filter(function(x){return kindOk(x)&&(!filtered||tagMatchAll(x,false))})
   var cards=[]
   var imgFiles=viewFiles.filter(function(x){return isImgName(x.name)})
   var vidFiles=viewFiles.filter(function(x){return isVideoName(x.name)})
