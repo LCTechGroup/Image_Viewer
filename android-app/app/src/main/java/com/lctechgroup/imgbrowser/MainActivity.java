@@ -47,12 +47,18 @@ import android.content.res.AssetFileDescriptor;
 public class MainActivity extends Activity {
 
     private static final int REQ_TREE = 1001;
+    static final int REQ_VIDEO = 1002;
+    static final int REQ_MHT = 1003;
+    // 原生页切页动作回传所用的键；任务快照与浮球位置统一走 SharedPreferences
+    public static final String RES_ACTION = "action";
+    public static final String RES_TARGET = "target";
     private static final String HOST = "appimg.local";
     private static final String DIR_MIME = "vnd.android.document/directory";
 
     private WebView web;
     private SharedPreferences prefs;
-    private Uri treeUri;
+    private TaskBall taskBall;
+    private volatile Uri treeUri;
     private volatile boolean viewerOn = false;
     // JS 侧实时上报：当前界面按返回是否还留在 App 内
     private volatile boolean backable = false;
@@ -106,11 +112,56 @@ public class MainActivity extends Activity {
 
         setContentView(web);
 
+        // WebView 页同样使用原生悬浮球：动作直接回调 JS，位置 / 快照与视频 / MHT 页共用 prefs
+        taskBall = new TaskBall(this, prefs, new TaskBall.Listener() {
+            @Override
+            public void onAction(String action, int targetId) {
+                dispatchTaskAction(action, targetId);
+            }
+        });
+        // 视频 / MHT 页删除其他任务时发应用内广播，交给本页 JS 执行（播放不中断）
+        registerTaskActionReceiver();
+
         String saved = prefs.getString("treeUri", null);
         if (saved != null) {
             treeUri = Uri.parse(saved);
         }
         web.loadUrl("file:///android_asset/index.html");
+    }
+
+    // 统一把悬浮球动作转给 JS；删除任务后 JS 会回推快照刷新本地球
+    void dispatchTaskAction(String action, int targetId) {
+        js("window.__onNativeTaskAction&&window.__onNativeTaskAction("
+                + JSONObject.quote(action) + "," + targetId + ")");
+    }
+
+    private android.content.BroadcastReceiver taskActionReceiver;
+    private void registerTaskActionReceiver() {
+        taskActionReceiver = new android.content.BroadcastReceiver() {
+            @Override
+            public void onReceive(android.content.Context context, Intent intent) {
+                String action = intent.getStringExtra("action");
+                int target = intent.getIntExtra("target", 0);
+                if (action != null) dispatchTaskAction(action, target);
+            }
+        };
+        android.content.IntentFilter f = new android.content.IntentFilter(TaskBall.BROADCAST_TASK_ACTION);
+        // API33+ 必须显式声明导出标志；本广播只在应用内用 setPackage 限定
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(taskActionReceiver, f, android.content.Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(taskActionReceiver, f);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 从视频 / MHT 页返回时，球可能在那些页被拖动 / 任务被删除：重载共享坐标与快照
+        if (taskBall != null) {
+            taskBall.reloadPosition();
+            taskBall.refreshTasks();
+        }
     }
 
     // 用 openFileDescriptor 的 statSize 拿真实大小，比 openAssetFileDescriptor 可靠
@@ -163,7 +214,9 @@ public class MainActivity extends Activity {
 
     // 虚拟主机媒体请求：按文档 id 从 SAF 取流，支持视频拖动所需的 Range(206)
     private WebResourceResponse serveMedia(Uri u, Map<String, String> reqHeaders) {
-        Uri tree = treeUri;
+        // URL 携带所属授权树，迟到的媒体请求不会因切页读到另一个根目录。
+        String sourceTree = u.getQueryParameter("tree");
+        Uri tree = sourceTree != null && sourceTree.length() > 0 ? Uri.parse(sourceTree) : treeUri;
         String id = u.getQueryParameter("d");
         if (tree == null || id == null || id.length() == 0) {
             return emptyResponse();
@@ -184,7 +237,8 @@ public class MainActivity extends Activity {
                 mime = "application/octet-stream";
             }
             // 直接以普通文件方式打开，base=0，再取一次真实长度
-            long total = queryDocSize(doc, id);
+            String sizeKey = doc.toString();
+            long total = queryDocSize(doc, sizeKey);
             afd = getContentResolver().openAssetFileDescriptor(doc, "r");
             if (afd == null) {
                 return emptyResponse();
@@ -192,7 +246,7 @@ public class MainActivity extends Activity {
             long declared = afd.getDeclaredLength();
             if (declared > 0) {
                 total = declared;
-                sizeCache.put(id, total);
+                sizeCache.put(sizeKey, total);
             }
             final long baseOff = afd.getStartOffset();
             final long totalLen = total;
@@ -350,6 +404,17 @@ public class MainActivity extends Activity {
         });
     }
 
+    // 在 UI 投递时再校验，取消/切浏览页后已排队的旧树回调也不能落到新页。
+    private void scanJs(final Uri tree, final int gen, final String code) {
+        runOnUiThread(new Runnable() {
+            @Override public void run() {
+                if (gen == scanGen && tree.equals(treeUri) && !isFinishing()) {
+                    web.evaluateJavascript(code, null);
+                }
+            }
+        });
+    }
+
     private void startTreePicker() {
         Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -365,6 +430,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_VIDEO || requestCode == REQ_MHT) {
+            handleNativeTaskResult(resultCode, data);
+            return;
+        }
         if (requestCode != REQ_TREE) {
             return;
         }
@@ -385,6 +454,20 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             js("window.__onTreeError&&window.__onTreeError(" + JSONObject.quote(e.toString()) + ")");
         }
+    }
+
+    // 原生视频 / MHT 页浮球动作回传：取消（按返回）视为 close，OK 携带 switch/new
+    private void handleNativeTaskResult(int resultCode, Intent data) {
+        String action = "close";
+        int target = 0;
+        if (resultCode == RESULT_OK && data != null) {
+            String a = data.getStringExtra(RES_ACTION);
+            if (a != null && a.length() > 0) action = a;
+            target = data.getIntExtra(RES_TARGET, 0);
+        }
+        final String code = "window.__onNativeTaskAction&&window.__onNativeTaskAction("
+                + JSONObject.quote(action) + "," + target + ")";
+        js(code);
     }
 
     // 新选目录 / 手动刷新：显 loading 全量扫描，成功后覆盖树缓存
@@ -409,7 +492,7 @@ public class MainActivity extends Activity {
                     return;
                 }
                 if (cached != null) {
-                    js("window.__onTreeCached&&window.__onTreeCached(" + cached + ")");
+                    scanJs(tree, gen, "window.__onTreeCached&&window.__onTreeCached(" + cached + ")");
                     runFullScan(tree, true, gen);
                 } else {
                     runFullScan(tree, false, gen);
@@ -430,9 +513,9 @@ public class MainActivity extends Activity {
             if (rootName == null || rootName.length() == 0) {
                 String uriJson = JSONObject.quote(tree.toString());
                 if (background) {
-                    js("window.__onTreeGone&&window.__onTreeGone(" + uriJson + ")");
+                    scanJs(tree, gen, "window.__onTreeGone&&window.__onTreeGone(" + uriJson + ")");
                 } else {
-                    js("window.__onTreeError&&window.__onTreeError("
+                    scanJs(tree, gen, "window.__onTreeError&&window.__onTreeError("
                             + JSONObject.quote("文件夹不存在或无法访问") + "," + uriJson + ")");
                 }
                 return;
@@ -443,6 +526,7 @@ public class MainActivity extends Activity {
             final JSONObject root = new JSONObject();
             root.put("name", rootName);
             root.put("path", "");
+            root.put("id", rootId);
             root.put("uri", tree.toString());
             root.put("dirs", new JSONArray());
             root.put("files", new JSONArray());
@@ -466,7 +550,7 @@ public class MainActivity extends Activity {
             Exception err = firstErr.get();
             if (err != null) {
                 if (!background) {
-                    js("window.__onTreeError&&window.__onTreeError(" + JSONObject.quote(err.toString()) + ")");
+                    scanJs(tree, gen, "window.__onTreeError&&window.__onTreeError(" + JSONObject.quote(err.toString()) + ")");
                 }
                 return;
             }
@@ -478,11 +562,11 @@ public class MainActivity extends Activity {
             String cb = background
                     ? "window.__onTreeUpdate&&window.__onTreeUpdate("
                     : "window.__onTree&&window.__onTree(";
-            js(cb + json + ")");
+            scanJs(tree, gen, cb + json + ")");
         } catch (Exception e) {
             // 前台加载失败显式报错并带 uri 供标记失效；后台瞬时异常静默，不打扰也不误标
             if (!background) {
-                js("window.__onTreeError&&window.__onTreeError("
+                scanJs(tree, gen, "window.__onTreeError&&window.__onTreeError("
                         + JSONObject.quote(e.toString()) + ","
                         + JSONObject.quote(tree.toString()) + ")");
             }
@@ -541,10 +625,11 @@ public class MainActivity extends Activity {
                         DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                         DocumentsContract.Document.COLUMN_DISPLAY_NAME,
                         DocumentsContract.Document.COLUMN_MIME_TYPE,
-                        DocumentsContract.Document.COLUMN_LAST_MODIFIED
+                        DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+                        DocumentsContract.Document.COLUMN_SIZE
                 }, null, null, null);
                 if (c == null) {
-                    return;
+                    throw new IOException("Directory query returned no cursor");
                 }
                 java.util.ArrayList<DirTask> pending = null;
                 while (c.moveToNext()) {
@@ -562,6 +647,7 @@ public class MainActivity extends Activity {
                     if (DIR_MIME.equals(mime)) {
                         JSONObject d = new JSONObject();
                         d.put("name", name);
+                        d.put("id", id);
                         d.put("path", childPath);
                         d.put("dirs", new JSONArray());
                         d.put("files", new JSONArray());
@@ -575,8 +661,8 @@ public class MainActivity extends Activity {
                         JSONObject f = new JSONObject();
                         f.put("name", name);
                         f.put("path", childPath);
-                        f.put("id", (isImage(name) || isVideo(name) || isMht(name) || isTxt(name)
-                                || isPdf(name)) ? id : "");
+                        f.put("id", id);
+                        f.put("size", c.isNull(4) ? 0L : c.getLong(4));
                         if (modified != 0L) {
                             f.put("m", modified);
                         }
@@ -588,7 +674,7 @@ public class MainActivity extends Activity {
                         long prev = lastUi.get();
                         if (now - prev >= 500 && lastUi.compareAndSet(prev, now)) {
                             final int fn = n;
-                            js("window.__onWalkProgress&&window.__onWalkProgress(" + fn + ")");
+                            scanJs(tree, gen, "window.__onWalkProgress&&window.__onWalkProgress(" + fn + ")");
                         }
                     }
                 }
@@ -889,6 +975,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (taskActionReceiver != null) {
+            try { unregisterReceiver(taskActionReceiver); } catch (Exception ignored) {}
+            taskActionReceiver = null;
+        }
         io.shutdownNow();
         scanPool.shutdownNow();
         thumbPool.shutdownNow();
@@ -898,6 +988,23 @@ public class MainActivity extends Activity {
     }
 
     private final class Bridge {
+
+        // JS 浏览页恢复前同步设置媒体读取所用的授权树；不重新扫描。
+        @JavascriptInterface
+        public synchronized boolean activateTree(String uri) {
+            if (uri == null || uri.length() == 0) {
+                ++scanGen;
+                treeUri = null;
+                sizeCache.evictAll();
+                return true;
+            }
+            if (!uriAlive(uri)) return false;
+            ++scanGen;
+            treeUri = Uri.parse(uri);
+            sizeCache.evictAll();
+            prefs.edit().putString("treeUri", uri).apply();
+            return true;
+        }
 
         @JavascriptInterface
         public void pickDirectory() {
@@ -971,6 +1078,7 @@ public class MainActivity extends Activity {
         // 手动刷新：重新扫描当前根目录
         @JavascriptInterface
         public void reloadTree() {
+            sizeCache.evictAll();
             if (treeUri == null) {
                 js("window.__onTreeError&&window.__onTreeError('无文件夹')");
                 return;
@@ -1013,6 +1121,7 @@ public class MainActivity extends Activity {
         // 清 WebView 磁盘缓存（包括虚拟主机图片的缓存响应）
         @JavascriptInterface
         public void clearCache() {
+            sizeCache.evictAll();
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -1055,10 +1164,29 @@ public class MainActivity extends Activity {
             });
         }
 
-        // 清阅读器个性设置（视频长按倍速、循环单次）；其余设置在 JS localStorage
+        // 清阅读器个性设置（视频长按倍速、循环单次、浮球位置）；其余设置在 JS localStorage
         @JavascriptInterface
         public void clearReaderPrefs() {
-            prefs.edit().remove("vpLoop").remove("vpHoldSpeed").apply();
+            prefs.edit().remove("vpLoop").remove("vpHoldSpeed")
+                    .remove(TaskBall.PREF_X).remove(TaskBall.PREF_Y).apply();
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (taskBall != null) {
+                        taskBall.resetPosition();
+                    }
+                }
+            });
+        }
+
+        // 清视频 / MHT 的原生进度（按文件存的播放毫秒与滚动比例）
+        @JavascriptInterface
+        public void clearMediaPos() {
+            SharedPreferences.Editor ed = prefs.edit();
+            for (String k : prefs.getAll().keySet()) {
+                if (k.startsWith("vpos:") || k.startsWith("mpos:")) ed.remove(k);
+            }
+            ed.apply();
         }
 
         // 异步抓视频首帧，立即返回；完成或超时后通过 window.__onThumb 回调，绝不阻塞 JS
@@ -1078,14 +1206,20 @@ public class MainActivity extends Activity {
             thumbPool.execute(new Runnable() {
                 @Override
                 public void run() {
+                    if (done.get()) return;
                     String out = "";
                     MediaMetadataRetriever r = new MediaMetadataRetriever();
                     try {
                         Uri doc = DocumentsContract.buildDocumentUriUsingTree(tree, id);
                         r.setDataSource(MainActivity.this, doc);
-                        Bitmap bmp = r.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
-                        if (bmp == null) {
-                            bmp = r.getFrameAtTime(200000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                        Bitmap bmp = null;
+                        if (Build.VERSION.SDK_INT >= 27) {
+                            bmp = r.getScaledFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 480, 960);
+                            if (bmp == null) bmp = r.getScaledFrameAtTime(200000,
+                                    MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 480, 960);
+                        } else {
+                            bmp = r.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                            if (bmp == null) bmp = r.getFrameAtTime(200000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
                         }
                         if (bmp == null) {
                             // 视频内嵌封面图（部分 MP4 带，无需解码视频帧）
@@ -1095,14 +1229,15 @@ public class MainActivity extends Activity {
                             }
                         }
                         if (bmp != null) {
-                            int w = Math.min(360, bmp.getWidth());
-                            int h = (int) ((long) bmp.getHeight() * w / bmp.getWidth());
+                            float scale = Math.min(1f, Math.min(480f / bmp.getWidth(), 960f / bmp.getHeight()));
+                            int w = Math.max(1, Math.round(bmp.getWidth() * scale));
+                            int h = Math.max(1, Math.round(bmp.getHeight() * scale));
                             Bitmap scaled = bmp;
-                            if (w != bmp.getWidth()) {
+                            if (w != bmp.getWidth() || h != bmp.getHeight()) {
                                 scaled = Bitmap.createScaledBitmap(bmp, w, h, true);
                             }
                             java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
-                            scaled.compress(Bitmap.CompressFormat.JPEG, 70, bos);
+                            scaled.compress(Bitmap.CompressFormat.JPEG, 82, bos);
                             out = "data:image/jpeg;base64," + android.util.Base64.encodeToString(
                                     bos.toByteArray(), android.util.Base64.NO_WRAP);
                             if (scaled != bmp) {
@@ -1136,7 +1271,8 @@ public class MainActivity extends Activity {
             }, 6, TimeUnit.SECONDS);
         }
 
-        // 拉起原生 ExoPlayer 播放页；ids/names 为同文件夹视频列表，index 为当前项
+        // 拉起原生 ExoPlayer 播放页；ids/names 为同文件夹视频列表，index 为当前项。
+        // 多开浮球的位置与任务快照由 TaskBall 直接读 prefs，无需 intent 传递
         @JavascriptInterface
         public void playVideo(String id, String name, float speed, float hold,
                               String[] ids, String[] names, int index) {
@@ -1158,7 +1294,7 @@ public class MainActivity extends Activity {
                 in.putStringArrayListExtra(VideoActivity.EX_LIST + "n", nameList);
                 in.putExtra(VideoActivity.EX_INDEX, index);
             }
-            startActivity(in);
+            startActivityForResult(in, REQ_VIDEO);
         }
 
         // 拉起 MHT/MHTML 网页归档浏览页
@@ -1171,7 +1307,33 @@ public class MainActivity extends Activity {
             in.putExtra(MhtActivity.EX_TREE, treeUri.toString());
             in.putExtra(MhtActivity.EX_ID, id);
             in.putExtra(MhtActivity.EX_NAME, name == null ? "" : name);
-            startActivity(in);
+            startActivityForResult(in, REQ_MHT);
+        }
+
+        // JS 任务列表变化时同步快照给原生浮球（含当前任务 id）
+        @JavascriptInterface
+        public void syncTaskBall(final String json, final int currentId) {
+            prefs.edit()
+                    .putString(TaskBall.PREF_JSON, json == null ? "[]" : json)
+                    .putInt(TaskBall.PREF_CUR, currentId)
+                    .apply();
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (taskBall != null) taskBall.refreshTasks();
+                }
+            });
+        }
+
+        // 沉浸阅读态浮球变暗；浏览态恒亮
+        @JavascriptInterface
+        public void setTaskBallDim(final boolean dim) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (taskBall != null) taskBall.setDim(dim);
+                }
+            });
         }
 
         @JavascriptInterface

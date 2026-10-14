@@ -2,6 +2,7 @@ package com.lctechgroup.imgbrowser;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -24,6 +25,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -69,6 +72,9 @@ public class VideoActivity extends Activity {
     private int currentIndex = 0;
 
     private float normalSpeed = 1f, holdSpeed = 2f;
+    // 当前视频的进度存储键（播单切集时随 id 更新）
+    private String posKey = null;
+    private long lastSaveTick = 0L;
     private boolean holding = false, scrubbing = false;
     private boolean uiVisible = true;
     private Runnable uiHideTask;
@@ -147,8 +153,10 @@ public class VideoActivity extends Activity {
         vTitle.setText(name == null ? "" : name);
         updateSpeedBtn();
 
-        Uri tree = Uri.parse(getIntent().getStringExtra(EX_TREE));
+        final String treeStr = getIntent().getStringExtra(EX_TREE);
+        Uri tree = Uri.parse(treeStr);
         String id = getIntent().getStringExtra(EX_ID);
+        posKey = TaskBall.vposKey(treeStr, id);
         Uri doc = DocumentsContract.buildDocumentUriUsingTree(tree, id);
 
         // 走 AudioTrack.setPlaybackParams 即时变速：默认 MediaCodec 通道切速在很多设备有数百 ms
@@ -160,6 +168,9 @@ public class VideoActivity extends Activity {
         player.setMediaItem(MediaItem.fromUri(doc));
         player.setPlaybackSpeed(normalSpeed);
         player.setRepeatMode(loop ? REPEAT_MODE_ONE : REPEAT_MODE_OFF);
+        // prepare 前 seekTo 会作为起始位置生效：重开即续到上次退出的毫秒点
+        long savedPos = prefs.getLong(posKey, 0L);
+        if (savedPos > 1000L) player.seekTo(savedPos);
         player.prepare();
         player.setPlayWhenReady(true);
         updateLoopBtn();
@@ -176,6 +187,14 @@ public class VideoActivity extends Activity {
                     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                 } else {
                     getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                }
+            }
+
+            @Override
+            public void onPlaybackStateChanged(int state) {
+                // 自然播完删掉进度，下次重开从头播放
+                if (state == Player.STATE_ENDED && posKey != null) {
+                    prefs.edit().remove(posKey).apply();
                 }
             }
         });
@@ -210,9 +229,14 @@ public class VideoActivity extends Activity {
         btnOrient.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 landscape = !landscape;
-                setRequestedOrientation(landscape
-                        ? android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                        : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+                if (landscape) {
+                    setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+                    applyFullscreen(true);
+                } else {
+                    applyFullscreen(false);
+                    // 恢复系统重力感应/自动旋转，不再硬锁竖屏
+                    setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                }
                 updateOrientBtn();
             }
         });
@@ -248,6 +272,7 @@ public class VideoActivity extends Activity {
 
         setupGestures();
         showUi(true);
+        attachTaskBall();
     }
 
     private float readSpeed(String key, float def) {
@@ -292,6 +317,56 @@ public class VideoActivity extends Activity {
         btnOrient.setBackgroundResource(landscape ? R.drawable.vp_pill_on : R.drawable.vp_pill);
         btnOrient.setImageResource(landscape ? R.drawable.vp_compress : R.drawable.vp_expand);
         btnOrient.setColorFilter(landscape ? 0xFF232323 : 0xFFEEEEEE);
+    }
+
+    // 横屏=真全屏：隐藏状态栏与导航栏，内容铺到整屏；退出恢复系统栏与常规边距
+    @SuppressWarnings("deprecation")
+    private void applyFullscreen(boolean on) {
+        Window w = getWindow();
+        if (Build.VERSION.SDK_INT >= 30) {
+            MainActivity.setDecorFits(w, !on);
+            WindowInsetsController c = w.getInsetsController();
+            if (c != null) {
+                if (on) {
+                    c.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                    c.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                } else {
+                    c.show(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                }
+            }
+        } else {
+            root.setSystemUiVisibility(on
+                    ? (View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN)
+                    : View.SYSTEM_UI_FLAG_VISIBLE);
+        }
+        root.setFitsSystemWindows(!on);
+        // fitsSystemWindows 切 false 不会清除此前按竖屏 inset 打入的 padding，
+        // 必须显式清零，否则旋转后顶/底栏仍到不了屏幕边缘
+        if (on) root.setPadding(0, 0, 0, 0);
+        root.requestApplyInsets();
+        // 旋转完成后新 inset 会再派发一次，延后补一刀确保 padding 仍为 0
+        if (on) root.postDelayed(new Runnable() {
+            public void run() { if (landscape) root.setPadding(0, 0, 0, 0); }
+        }, 300);
+    }
+
+    // configChanges 已声明旋转不重建 Activity；旋转后按当前状态重新施加全屏
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (landscape) applyFullscreen(true);
+    }
+
+    // 临时滑出的系统栏在沉浸模式下会自动收回；重新获得焦点时若仍在横屏则再次隐藏
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && landscape) applyFullscreen(true);
     }
 
     // 纵向播单：RecyclerView 复用行视图，缩略图按目标尺寸降采样、Lru 缓存、仅可见行加载
@@ -453,7 +528,7 @@ public class VideoActivity extends Activity {
             if (cached == null) {
                 h.thumb.setTag(listIds[position]);
                 if (queued.add(listIds[position])) {
-                    loadListThumb(h.thumb, listIds[position]);
+                    loadListThumb(h.thumb, listIds[position], queued);
                 }
             } else {
                 h.thumb.setTag(null);
@@ -490,22 +565,24 @@ public class VideoActivity extends Activity {
     // 当前播单弹窗引用（供 ViewHolder 点击关闭）
     private Dialog dlgRef;
 
-    // 缩略图内存缓存：按 1/8 可用内存上限，避免整库 4K 原始帧驻留导致滚动 GC 卡顿
-    private final LruCache<String, Bitmap> thumbCache = new LruCache<String, Bitmap>((int) (Runtime.getRuntime().maxMemory() / 8)) {
+    // 缩略图内存缓存：按字节计量，最多 32 MiB 且不超过可用堆的 1/8。
+    private final LruCache<String, Bitmap> thumbCache = new LruCache<String, Bitmap>((int) Math.min(32L * 1024 * 1024, Runtime.getRuntime().maxMemory() / 8)) {
         @Override
         protected int sizeOf(@NonNull String key, @NonNull Bitmap value) {
-            return value.getByteCount() / 1024;
+            return value.getByteCount();
         }
     };
 
     // 播单行缩略图：Android10+ 走 SAF 提供方缩略图通道，旧版抓整帧后缩到目标尺寸，双线程后台执行
     private final java.util.concurrent.ExecutorService listThumbPool =
             java.util.concurrent.Executors.newFixedThreadPool(2);
-    private void loadListThumb(final ImageView target, final String vid) {
+    private void loadListThumb(final ImageView target, final String vid, final java.util.Set<String> queued) {
         listThumbPool.execute(new Runnable() {
             public void run() {
+                if (isFinishing() || isDestroyed()) { queued.remove(vid); return; }
                 float density = getResources().getDisplayMetrics().density;
-                final int tw = (int) (84 * density * 2), th = (int) (50 * density * 2);
+                final int tw = Math.min(640, Math.max(210, Math.round(84 * density * 2.5f)));
+                final int th = Math.max(1, Math.round(tw * 50f / 84f));
                 Uri doc = DocumentsContract.buildDocumentUriUsingTree(
                         Uri.parse(getIntent().getStringExtra(EX_TREE)), vid);
                 Bitmap bmp = null;
@@ -523,22 +600,30 @@ public class VideoActivity extends Activity {
                     Bitmap raw = null;
                     try {
                         r.setDataSource(VideoActivity.this, doc);
-                        raw = r.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
-                        if (raw == null) raw = r.getFrameAtTime(200000,
-                                MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                        if (Build.VERSION.SDK_INT >= 27) {
+                            raw = r.getScaledFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, tw, th);
+                            if (raw == null) raw = r.getScaledFrameAtTime(200000,
+                                    MediaMetadataRetriever.OPTION_CLOSEST_SYNC, tw, th);
+                        } else {
+                            raw = r.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                            if (raw == null) raw = r.getFrameAtTime(200000,
+                                    MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                        }
                     } catch (Exception ignored) {
                     } finally {
                         try { r.release(); } catch (Exception ignored) {}
                     }
                     if (raw != null) bmp = cropThumb(raw, tw, th);
                 }
+                queued.remove(vid);
+                if (isFinishing() || isDestroyed()) { if (bmp != null) bmp.recycle(); return; }
                 final Bitmap fb = bmp;
                 if (fb != null) {
                     thumbCache.put(vid, fb);
                     runOnUiThread(new Runnable() {
                         public void run() {
                             // 行已被复用给其它视频则不回填，防止错位
-                            if (vid.equals(target.getTag())) target.setImageBitmap(fb);
+                            if (!isFinishing() && !isDestroyed() && vid.equals(target.getTag())) target.setImageBitmap(fb);
                         }
                     });
                 }
@@ -570,10 +655,14 @@ public class VideoActivity extends Activity {
         }
         currentIndex = i;
         String id2 = listIds[i];
-        Uri tree2 = Uri.parse(getIntent().getStringExtra(EX_TREE));
+        String treeStr2 = getIntent().getStringExtra(EX_TREE);
+        Uri tree2 = Uri.parse(treeStr2);
         Uri doc2 = DocumentsContract.buildDocumentUriUsingTree(tree2, id2);
+        posKey = TaskBall.vposKey(treeStr2, id2);
         player.setMediaItem(MediaItem.fromUri(doc2));
         player.setPlaybackSpeed(normalSpeed);
+        long saved2 = prefs.getLong(posKey, 0L);
+        if (saved2 > 1000L) player.seekTo(saved2);
         player.prepare();
         player.play();
         if (listNames != null && i < listNames.length) {
@@ -704,10 +793,52 @@ public class VideoActivity extends Activity {
                 long d = player.getDuration(), c = player.getCurrentPosition();
                 if (!scrubbing && d > 0) seekBar.setProgress((int) (c * 1000 / d));
                 timeText.setText(fmtT(c) + " / " + fmtT(d));
+                long now = android.os.SystemClock.uptimeMillis();
+                if (now - lastSaveTick > 2000) {
+                    lastSaveTick = now;
+                    savePos();
+                }
             }
             ui.postDelayed(this, 500);
         }
     };
+
+    // 保存当前视频毫秒位置；距结尾不足 3 秒视为看完，删进度保证下次从头播
+    private void savePos() {
+        if (player == null || posKey == null) return;
+        long d = player.getDuration(), c = player.getCurrentPosition();
+        if (d > 0 && c >= d - 3000L) {
+            prefs.edit().remove(posKey).apply();
+        } else if (c > 1000L) {
+            prefs.edit().putLong(posKey, c).apply();
+        }
+    }
+
+    // 多开悬浮球：位置 / 任务快照直接读共享 prefs；切页 / 新建先存进度再回传动作
+    private TaskBall taskBall;
+    private void attachTaskBall() {
+        taskBall = new TaskBall(this, prefs, new TaskBall.Listener() {
+            @Override
+            public void onAction(String action, int target) {
+                if (TaskBall.ACTION_CLOSE_TASK.equals(action)
+                        && target != prefs.getInt(TaskBall.PREF_CUR, 0)) {
+                    // 删除的是其他任务：不退出播放，广播给 MainActivity 的 JS 执行
+                    taskBall.removeTaskLocally(target);
+                    taskBall.sendTaskActionBroadcast(action, target);
+                    return;
+                }
+                // 切页 / 新建 / 删除当前任务：按正常退出流程，先存进度再回传动作
+                savePos();
+                Intent out = new Intent();
+                out.putExtra(MainActivity.RES_ACTION, action);
+                out.putExtra(MainActivity.RES_TARGET, target);
+                setResult(RESULT_OK, out);
+                finish();
+            }
+        });
+        // 播放器沉浸态：球静止半透明
+        taskBall.setDim(true);
+    }
 
     private static String fmtT(long s) {
         if (s < 0 || s == Long.MIN_VALUE) s = 0;
@@ -716,12 +847,13 @@ public class VideoActivity extends Activity {
         return String.format("%02d:%02d", m, sec);
     }
 
-    // 切到后台立即暂停，不做后台播放
+    // 切到后台立即暂停，不做后台播放；同时落一次进度
     @Override
     protected void onPause() {
         super.onPause();
         if (player != null) {
             player.pause();
+            savePos();
         }
     }
 
@@ -729,6 +861,16 @@ public class VideoActivity extends Activity {
     protected void onStart() {
         super.onStart();
         ui.post(ticker);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 回前台时以 JS 回写的权威快照为准（修正删除失败等乐观更新偏差），并重载共享坐标
+        if (taskBall != null) {
+            taskBall.reloadPosition();
+            taskBall.refreshTasks();
+        }
     }
 
     @Override
@@ -742,6 +884,7 @@ public class VideoActivity extends Activity {
         super.onDestroy();
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         listThumbPool.shutdownNow();
+        thumbCache.evictAll();
         ui.removeCallbacksAndMessages(null);
         if (player != null) {
             player.release();

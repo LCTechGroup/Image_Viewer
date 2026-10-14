@@ -1,6 +1,8 @@
 package com.lctechgroup.imgbrowser;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -10,6 +12,7 @@ import android.provider.DocumentsContract;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
@@ -39,6 +42,15 @@ public class MhtActivity extends Activity {
     private File localFile;
     private byte[] raw;
     private boolean stringFallbackTried = false;
+    private SharedPreferences prefs;
+    private String posKey = null;
+    private boolean scrollRestored = false;
+    private final Runnable saveScrollTask = new Runnable() {
+        @Override
+        public void run() {
+            saveScrollRatio();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +59,10 @@ public class MhtActivity extends Activity {
         MainActivity.paintSystemBars(w);
         // 自己接管状态栏避让：顶栏垫真实状态栏高度，避免系统内边距与手动padding叠加
         MainActivity.setDecorFits(w, false);
+
+        prefs = getSharedPreferences("app", MODE_PRIVATE);
+        posKey = TaskBall.mposKey(getIntent().getStringExtra(EX_TREE),
+                getIntent().getStringExtra(EX_ID));
 
         float density = getResources().getDisplayMetrics().density;
         LinearLayout root = new LinearLayout(this);
@@ -136,11 +152,99 @@ public class MhtActivity extends Activity {
             }
         });
         web.setWebChromeClient(new WebChromeClient());
+        // 滚动位置节流上报：minSdk23，setOnScrollChangeListener 可用
+        web.setOnScrollChangeListener(new View.OnScrollChangeListener() {
+            @Override
+            public void onScrollChange(View v, int sx, int sy, int ox, int oy) {
+                if (sy == oy) return;
+                ui.removeCallbacks(saveScrollTask);
+                ui.postDelayed(saveScrollTask, 400);
+            }
+        });
         root.addView(web, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         setContentView(root);
 
         loadArchive();
+        attachTaskBall();
+    }
+
+    // 取网页真实滚动比例落 prefs
+    private void saveScrollRatio() {
+        if (web == null || posKey == null) return;
+        web.evaluateJavascript(
+                "(function(){var h=document.documentElement.scrollHeight-window.innerHeight;"
+                        + "return h>0?window.scrollY/h:0})()",
+                new ValueCallback<String>() {
+                    @Override
+                    public void onReceiveValue(String val) {
+                        try {
+                            float r = Float.parseFloat(val);
+                            if (r >= 0f && r <= 1f) prefs.edit().putFloat(posKey, r).apply();
+                        } catch (Exception ignored) {
+                        }
+                    }
+                });
+    }
+
+    // 渲染成功后按比例滚回；MHT 为本地归档，高度基本稳定，仍延时校正几次兜图片懒加载
+    private void restoreScrollRatio() {
+        if (web == null || posKey == null || scrollRestored) return;
+        final float r = prefs.getFloat(posKey, -1f);
+        if (!(r > 0f) || r >= 1f) return;
+        scrollRestored = true;
+        final String js = "(function(){var h=document.documentElement.scrollHeight-window.innerHeight;"
+                + "window.scrollTo(0,Math.round(h*" + r + "))})()";
+        Runnable doScroll = new Runnable() {
+            @Override
+            public void run() {
+                if (web != null) web.evaluateJavascript(js, null);
+            }
+        };
+        ui.postDelayed(doScroll, 120);
+        ui.postDelayed(doScroll, 400);
+        ui.postDelayed(doScroll, 1200);
+        ui.postDelayed(doScroll, 2500);
+    }
+
+    // 与视频页同款多开浮球：位置 / 快照读共享 prefs，动作回传 MainActivity 转交 JS
+    private TaskBall taskBall;
+    private void attachTaskBall() {
+        taskBall = new TaskBall(this, prefs, new TaskBall.Listener() {
+            @Override
+            public void onAction(String action, int target) {
+                if (TaskBall.ACTION_CLOSE_TASK.equals(action)
+                        && target != prefs.getInt(TaskBall.PREF_CUR, 0)) {
+                    taskBall.removeTaskLocally(target);
+                    taskBall.sendTaskActionBroadcast(action, target);
+                    return;
+                }
+                // 切页 / 新建 / 删除当前任务：按正常退出流程
+                saveScrollRatio();
+                Intent out = new Intent();
+                out.putExtra(MainActivity.RES_ACTION, action);
+                out.putExtra(MainActivity.RES_TARGET, target);
+                setResult(RESULT_OK, out);
+                finish();
+            }
+        });
+        taskBall.setDim(true);
+        // 本页自己接管系统栏避让，浮球也要让出导航栏高度
+        int navH = 0;
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            int res = getResources().getIdentifier("navigation_bar_height", "dimen", "android");
+            navH = res > 0 ? getResources().getDimensionPixelSize(res) : 0;
+        }
+        taskBall.setBottomInset(navH);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (taskBall != null) {
+            taskBall.reloadPosition();
+            taskBall.refreshTasks();
+        }
     }
 
     // 白屏探测：节点数和正文长度都为 0 视为没渲染出来，回退一次字符串加载；再失败给提示
@@ -151,7 +255,10 @@ public class MhtActivity extends Activity {
             new android.webkit.ValueCallback<String>() {
                 public void onReceiveValue(String val) {
                     boolean empty = val == null || val.contains("\"0:0\"");
-                    if (!empty) return;
+                    if (!empty) {
+                        restoreScrollRatio();
+                        return;
+                    }
                     if (!stringFallbackTried && raw != null) {
                         stringFallbackTried = true;
                         loadAsString();
@@ -224,6 +331,13 @@ public class MhtActivity extends Activity {
     private static void lockFileOrigin(WebView web) {
         web.getSettings().setAllowFileAccessFromFileURLs(false);
         web.getSettings().setAllowUniversalAccessFromFileURLs(false);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        ui.removeCallbacks(saveScrollTask);
+        saveScrollRatio();
     }
 
     @Override
